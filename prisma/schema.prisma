@@ -15,7 +15,8 @@ model User {
   firstName   String
   lastName    String
   email       String      @unique
-  mobile      String
+  password    String?
+  mobile      String?
   accountType AccountType @default(PERSONAL)
   message     String?
   isApproved  Boolean     @default(false)

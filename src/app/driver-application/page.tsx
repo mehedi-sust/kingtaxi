@@ -48,11 +48,28 @@ export default function DriverApplication() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setIsLoading(false);
-    setSubmitted(true);
+    try {
+      const response = await fetch('/api/drivers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        setSubmitted(true);
+      } else {
+        const errorData = await response.json();
+        console.error('Driver application failed:', errorData.error);
+        alert(`Application failed: ${errorData.error}`);
+      }
+    } catch (error) {
+      console.error('Driver application error:', error);
+      alert('An error occurred while submitting your application. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const benefits = [

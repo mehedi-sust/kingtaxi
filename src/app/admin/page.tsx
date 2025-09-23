@@ -75,15 +75,50 @@ export default function AdminDashboard() {
         fetch('/api/stats'),
       ]);
 
-      const usersData = await usersRes.json();
-      const driversData = await driversRes.json();
-      const statsData = await statsRes.json();
+      // Handle users data
+      if (usersRes.ok) {
+        const usersData = await usersRes.json();
+        setUsers(usersData);
+      } else {
+        console.error('Failed to fetch users:', usersRes.statusText);
+        setUsers([]);
+      }
 
-      setUsers(usersData);
-      setDrivers(driversData);
-      setStats(statsData.stats);
+      // Handle drivers data
+      if (driversRes.ok) {
+        const driversData = await driversRes.json();
+        setDrivers(driversData);
+      } else {
+        console.error('Failed to fetch drivers:', driversRes.statusText);
+        setDrivers([]);
+      }
+
+      // Handle stats data
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setStats(statsData.stats || {
+          totalUsers: 0,
+          totalDrivers: 0,
+          activeOffers: 0,
+        });
+      } else {
+        console.error('Failed to fetch stats:', statsRes.statusText);
+        setStats({
+          totalUsers: 0,
+          totalDrivers: 0,
+          activeOffers: 0,
+        });
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
+      // Set fallback data on error
+      setUsers([]);
+      setDrivers([]);
+      setStats({
+        totalUsers: 0,
+        totalDrivers: 0,
+        activeOffers: 0,
+      });
     } finally {
       setLoading(false);
     }
@@ -99,6 +134,7 @@ export default function AdminDashboard() {
       </div>
     );
   }
+
 
   if (!isAuthenticated || !user?.isAdmin) {
     return (
@@ -119,9 +155,9 @@ export default function AdminDashboard() {
   }
 
   const statsCards = [
-    { title: 'Total Users', value: stats.totalUsers.toString(), change: '+12%', icon: Users, color: 'text-blue-600', bgColor: 'bg-blue-100' },
-    { title: 'Driver Applications', value: stats.totalDrivers.toString(), change: '+8%', icon: Car, color: 'text-green-600', bgColor: 'bg-green-100' },
-    { title: 'Active Offers', value: stats.activeOffers.toString(), change: '+5%', icon: FileText, color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
+    { title: 'Total Users', value: (stats?.totalUsers || 0).toString(), change: '+12%', icon: Users, color: 'text-blue-600', bgColor: 'bg-blue-100' },
+    { title: 'Driver Applications', value: (stats?.totalDrivers || 0).toString(), change: '+8%', icon: Car, color: 'text-green-600', bgColor: 'bg-green-100' },
+    { title: 'Active Offers', value: (stats?.activeOffers || 0).toString(), change: '+5%', icon: FileText, color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
     { title: 'Revenue (Month)', value: '£12,450', change: '+15%', icon: TrendingUp, color: 'text-purple-600', bgColor: 'bg-purple-100' },
   ];
 
@@ -180,12 +216,13 @@ export default function AdminDashboard() {
           transition={{ duration: 0.6 }}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-          <p className="text-gray-600">Manage users, applications, and system settings</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Admin Dashboard</h1>
+          <p className="text-gray-600 dark:text-gray-300">Manage users, applications, and system settings</p>
         </motion.div>
 
+
         {/* Navigation Tabs */}
-        <div className="border-b border-gray-200 mb-8">
+        <div className="border-b border-gray-200 dark:border-gray-700 mb-8">
           <nav className="flex space-x-8">
             {tabs.map((tab) => (
               <button
@@ -193,8 +230,8 @@ export default function AdminDashboard() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab.id
-                    ? 'border-red-500 text-red-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-red-500 text-red-600 dark:text-red-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
               >
                 <tab.icon className="w-5 h-5 mr-2" />

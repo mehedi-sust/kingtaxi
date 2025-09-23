@@ -38,37 +38,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
-    // Default admin credentials
-    if (email === 'admin@kingtaxi.co.uk' && password === 'Admin123') {
-      const adminUser: User = {
-        id: 'admin-1',
-        email: 'admin@kingtaxi.co.uk',
-        firstName: 'Admin',
-        lastName: 'User',
-        accountType: 'business',
-        isAdmin: true,
-        isVerified: true,
-      };
-      setUser(adminUser);
-      localStorage.setItem('kingtaxi_user', JSON.stringify(adminUser));
-      setIsLoading(false);
-      return true;
-    }
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-    // For demo purposes, accept any other email/password combination
-    const demoUser: User = {
-      id: `user-${Date.now()}`,
-      email,
-      firstName: 'Demo',
-      lastName: 'User',
-      accountType: 'personal',
-      isAdmin: false,
-      isVerified: true,
-    };
-    setUser(demoUser);
-    localStorage.setItem('kingtaxi_user', JSON.stringify(demoUser));
-    setIsLoading(false);
-    return true;
+      if (response.ok) {
+        const userData = await response.json();
+        const user: User = {
+          id: userData.id,
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          accountType: userData.accountType.toLowerCase() as 'personal' | 'business',
+          isAdmin: userData.isAdmin || false,
+          isVerified: userData.isApproved,
+        };
+        setUser(user);
+        localStorage.setItem('kingtaxi_user', JSON.stringify(user));
+        setIsLoading(false);
+        return true;
+      } else {
+        const errorData = await response.json();
+        console.error('Login failed:', errorData.error);
+        
+        // If it's a database setup error, throw it so the UI can show the specific message
+        if (response.status === 503) {
+          throw new Error(errorData.error);
+        }
+        
+        setIsLoading(false);
+        return false;
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setIsLoading(false);
+      return false;
+    }
   };
 
   const logout = () => {

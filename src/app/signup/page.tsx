@@ -5,7 +5,6 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { User, Mail, Phone, Building, MessageSquare, ArrowRight } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 
 export default function SignUp() {
   const [formData, setFormData] = useState({
@@ -20,9 +19,8 @@ export default function SignUp() {
   });
 
   const [isLoading, setIsLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
-  const { login } = useAuth();
+  const [success, setSuccess] = useState(false);
   const router = useRouter();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -46,48 +44,63 @@ export default function SignUp() {
     }
 
     try {
-      // For demo purposes, we'll auto-login the user after signup
-      const success = await login(formData.email, formData.password);
-      if (success) {
-        setSubmitted(true);
-        // Redirect to home after a short delay
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        setSuccess(true);
+        // Redirect to signin page after a short delay
         setTimeout(() => {
-          router.push('/');
-        }, 2000);
+          router.push('/signin');
+        }, 3000);
       } else {
-        setError('Registration failed. Please try again.');
+        const errorData = await response.json();
+        if (response.status === 503) {
+          throw new Error(errorData.error);
+        }
+        setError(errorData.error || 'Registration failed. Please try again.');
       }
-    } catch (err) {
-      setError('An error occurred during registration. Please try again.');
+    } catch (error) {
+      console.error('Registration error:', error);
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An error occurred during registration. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (submitted) {
+  if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50 flex items-center justify-center px-4 pt-20">
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center px-4 pt-20">
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6 }}
-          className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center"
+          className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 text-center"
         >
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Registration Submitted!</h2>
-          <p className="text-gray-600 mb-6">
-            Thank you for registering with King Taxi. Your application has been submitted and is under review. 
-            We'll contact you within 24 hours to verify and approve your account.
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Registration Successful!</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
+            Your account has been created successfully. Your account is pending approval from our admin team. 
+            You'll be redirected to the sign-in page shortly.
           </p>
           <Link
-            href="/"
+            href="/signin"
             className="inline-flex items-center bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200"
           >
-            Return to Home
+            Go to Sign In
             <ArrowRight className="w-4 h-4 ml-2" />
           </Link>
         </motion.div>
@@ -148,7 +161,7 @@ export default function SignUp() {
                 </div>
 
                 <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Last Name *
                   </label>
                   <div className="relative">
@@ -168,7 +181,7 @@ export default function SignUp() {
               </div>
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Email Address *
                 </label>
                 <div className="relative">
@@ -187,7 +200,7 @@ export default function SignUp() {
               </div>
 
               <div>
-                <label htmlFor="mobile" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="mobile" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Mobile Number *
                 </label>
                 <div className="relative">
@@ -206,7 +219,7 @@ export default function SignUp() {
               </div>
 
               <div>
-                <label htmlFor="accountType" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="accountType" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Account Type *
                 </label>
                 <div className="relative">
@@ -217,7 +230,7 @@ export default function SignUp() {
                     value={formData.accountType}
                     onChange={handleInputChange}
                     required
-                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 appearance-none bg-white"
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 appearance-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     <option value="personal">Personal</option>
                     <option value="business">Business</option>
@@ -226,7 +239,7 @@ export default function SignUp() {
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Password *
                 </label>
                 <div className="relative">
@@ -245,7 +258,7 @@ export default function SignUp() {
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Confirm Password *
                 </label>
                 <div className="relative">
@@ -264,7 +277,7 @@ export default function SignUp() {
               </div>
 
               <div>
-                <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="message" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Message (Optional)
                 </label>
                 <div className="relative">
@@ -275,7 +288,7 @@ export default function SignUp() {
                     value={formData.message}
                     onChange={handleInputChange}
                     rows={4}
-                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 resize-none"
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     placeholder="Tell us about your transportation needs..."
                   />
                 </div>

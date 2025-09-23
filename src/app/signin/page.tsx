@@ -38,10 +38,15 @@ export default function SignIn() {
       if (success) {
         router.push('/');
       } else {
-        setError('Invalid credentials. Please try again.');
+        setError('Invalid credentials. Please check your email and password.');
       }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
+    } catch (error) {
+      console.error('Login error:', error);
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Unable to connect to server. Please try again later.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -80,10 +85,11 @@ export default function SignIn() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg">
                   {error}
                 </div>
               )}
+              
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                   Email Address
