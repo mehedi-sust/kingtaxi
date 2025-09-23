@@ -1,0 +1,31 @@
+# Development files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Documentation
+README.md
+DATABASE_SETUP.md
+
+# Development scripts
+setup-db.js
+
+# Database files
+/prisma/migrations/dev.db*
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Coverage
+coverage/
