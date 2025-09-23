@@ -9,7 +9,8 @@
   },
   "build": {
     "env": {
-      "PRISMA_GENERATE_DATAPROXY": "true"
+      "PRISMA_GENERATE_DATAPROXY": "true",
+      "PRISMA_CLI_BINARY_TARGETS": "native,rhel-openssl-1.0.x"
     }
   },
   "env": {

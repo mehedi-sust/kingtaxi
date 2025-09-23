@@ -2,13 +2,30 @@
 
 ## Prisma Build Issue Fix
 
-The main issue with Vercel deployment is that Prisma Client needs to be generated during the build process. This has been fixed with the following changes:
+The main issue with Vercel deployment is that Prisma Client needs to be generated during the build process. This has been fixed with a comprehensive solution:
 
 ### 1. Updated package.json scripts
-- `build`: `prisma generate && next build --turbopack`
+- `build`: `node build.js` (custom build script)
+- `build:next`: `next build --turbopack`
 - `postinstall`: `prisma generate`
 
-### 2. Created vercel.json configuration
+### 2. Created custom build.js script
+A robust build script that:
+- Generates Prisma Client explicitly
+- Builds Next.js application
+- Provides detailed logging
+- Handles errors gracefully
+
+### 3. Updated Prisma schema
+```prisma
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+  engineType = "library"
+}
+```
+
+### 4. Created vercel.json configuration
 ```json
 {
   "buildCommand": "npm run build",
@@ -21,13 +38,27 @@ The main issue with Vercel deployment is that Prisma Client needs to be generate
   },
   "build": {
     "env": {
-      "PRISMA_GENERATE_DATAPROXY": "true"
+      "PRISMA_GENERATE_DATAPROXY": "true",
+      "PRISMA_CLI_BINARY_TARGETS": "native,rhel-openssl-1.0.x"
     }
   },
   "env": {
     "DATABASE_URL": "@database_url"
   }
 }
+```
+
+### 5. Updated next.config.ts
+```typescript
+const nextConfig: NextConfig = {
+  serverExternalPackages: ['@prisma/client'],
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals.push('@prisma/client');
+    }
+    return config;
+  },
+};
 ```
 
 ### 3. Environment Variables Setup
