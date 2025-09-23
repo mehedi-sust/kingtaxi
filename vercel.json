@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
+  "buildCommand": "chmod +x vercel-build.sh && ./vercel-build.sh",
+  "installCommand": "npm ci",
   "framework": "nextjs",
   "functions": {
     "app/api/**/*.ts": {
@@ -10,7 +10,8 @@
   "build": {
     "env": {
       "PRISMA_GENERATE_DATAPROXY": "true",
-      "PRISMA_CLI_BINARY_TARGETS": "native,rhel-openssl-1.0.x"
+      "PRISMA_CLI_BINARY_TARGETS": "native,rhel-openssl-1.0.x",
+      "SKIP_ENV_VALIDATION": "true"
     }
   },
   "env": {

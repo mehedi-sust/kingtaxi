@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack --port 3000",
+    "dev": "next dev --port 3000",
+    "prebuild": "npx prisma generate",
     "build": "node build.js",
-    "build:next": "next build --turbopack",
+    "build:next": "next build",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
