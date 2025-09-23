@@ -13,8 +13,5 @@
       "PRISMA_CLI_BINARY_TARGETS": "native,rhel-openssl-1.0.x",
       "SKIP_ENV_VALIDATION": "true"
     }
-  },
-  "env": {
-    "DATABASE_URL": "@database_url"
   }
 }

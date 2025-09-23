@@ -63,16 +63,27 @@ const nextConfig: NextConfig = {
 
 ### 3. Environment Variables Setup
 
+**IMPORTANT**: The `vercel.json` no longer references environment variables. You must set them up manually in your Vercel dashboard.
+
 In your Vercel dashboard, add these environment variables:
 
 1. **DATABASE_URL**: Your PostgreSQL connection string
    - Example: `postgresql://username:password@host:port/database_name`
+   - **Required**: Check all environments (Production, Preview, Development)
 
 2. **NEXTAUTH_SECRET**: A random secret key for NextAuth
    - Generate with: `openssl rand -base64 32`
+   - **Optional**: Check all environments
 
 3. **NEXTAUTH_URL**: Your Vercel deployment URL
    - Example: `https://your-app-name.vercel.app`
+   - **Optional**: Check Production only
+
+**Setup Steps:**
+1. Go to Vercel Dashboard → Your Project → Settings → Environment Variables
+2. Add each variable with the correct values
+3. Make sure to check the appropriate environment boxes
+4. Redeploy your application
 
 ### 4. Database Setup
 
