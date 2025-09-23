@@ -1,0 +1,22 @@
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: kingtaxi-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: kingtaxi
+      POSTGRES_PASSWORD: kingtaxi123
+      POSTGRES_DB: kingtaxi_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kingtaxi -d kingtaxi_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

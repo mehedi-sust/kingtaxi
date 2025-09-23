@@ -1,36 +1,200 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# King Taxi - Premium Taxi Service Website
+
+A modern, responsive web application for King Taxi, a UK-based premium taxi service company. Built with Next.js 15, TypeScript, Tailwind CSS, and PostgreSQL.
+
+## Features
+
+### 🚗 Core Features
+- **Fast Loading**: Optimized for speed with mobile-first design
+- **Animated Navigation**: Red car animation with spinning wheels
+- **Responsive Design**: Works seamlessly on mobile, tablet, and desktop
+- **Modern UI**: Clean, professional design with smooth animations
+
+### 📱 Pages & Functionality
+- **Home Page**: Hero section, services, taxi fare calculator, car gallery preview, customer reviews
+- **About Us**: Company story, values, driver information, and team benefits
+- **Picture Gallery**: Interactive vehicle gallery with filtering and modal views
+- **Booking System**: Multi-step booking process with fare estimation
+- **Authentication**: User registration and sign-in system
+- **Driver Application**: Comprehensive application form for potential drivers
+
+### 🎨 Design Features
+- **Framer Motion Animations**: Smooth scroll animations and interactive elements
+- **Custom Car Animation**: Animated red taxi in navigation bar
+- **Responsive Layout**: Mobile-first design approach
+- **Consistent Theme**: Persistent styling across page refreshes
+- **Accessibility**: Focus states and keyboard navigation support
+
+### 🛠 Technical Stack
+- **Frontend**: Next.js 15, TypeScript, Tailwind CSS
+- **Animations**: Framer Motion
+- **Database**: PostgreSQL 17 with Prisma ORM
+- **Icons**: Lucide React
+- **Deployment**: Docker support included
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- Node.js 18+ 
+- Docker and Docker Compose
+- Git
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd kingtaxi-webapp
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   ```
+   Update the `.env` file with your database credentials.
+
+4. **Start the database**
+   ```bash
+   docker-compose up -d
+   ```
+
+5. **Set up the database**
+   ```bash
+   npx prisma generate
+   npx prisma migrate dev --name init
+   ```
+
+   **Note:** If you encounter port 5432 conflicts, the database is configured to use port 5433 instead.
+
+6. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+
+7. **Open your browser**
+   Navigate to [http://localhost:3000](http://localhost:3000)
+
+### Database Setup
+
+The application uses PostgreSQL 17 running in a Docker container. The database schema includes:
+
+- **Users**: Customer registration and account management
+- **Driver Applications**: Driver recruitment system  
+- **Car Images**: Vehicle gallery management
+- **Reviews**: Customer testimonials
+- **Offers**: Promotional campaigns and discounts
+
+### Project Structure
+
+```
+kingtaxi-webapp/
+├── src/
+│   ├── app/                 # Next.js app router pages
+│   │   ├── about/          # About us page
+│   │   ├── book/           # Booking system
+│   │   ├── driver-application/ # Driver application form
+│   │   ├── gallery/        # Vehicle gallery
+│   │   ├── signin/         # User authentication
+│   │   ├── signup/         # User registration
+│   │   └── globals.css     # Global styles
+│   ├── components/         # Reusable React components
+│   │   ├── AnimatedCar.tsx # Navigation car animation
+│   │   ├── CarGallery.tsx  # Vehicle showcase
+│   │   ├── Footer.tsx      # Site footer
+│   │   ├── Hero.tsx        # Homepage hero section
+│   │   ├── Navbar.tsx      # Navigation component
+│   │   ├── Reviews.tsx     # Customer testimonials
+│   │   ├── Services.tsx    # Service information
+│   │   └── TaxiFare.tsx    # Fare calculator
+│   └── generated/          # Prisma generated files
+├── prisma/
+│   └── schema.prisma       # Database schema
+├── docker-compose.yml      # Database container config
+└── README.md              # This file
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Key Features Implementation
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 🚗 Animated Navigation
+- Custom SVG car with spinning wheels
+- Smooth animation across the navigation bar
+- Pauses at logo position before continuing
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 📱 Mobile-First Design  
+- Responsive breakpoints for all screen sizes
+- Touch-friendly interactions
+- Optimized for mobile performance
 
-## Learn More
+### 🎨 Interactive Elements
+- Hover effects and transitions
+- Scroll-triggered animations
+- Interactive forms with validation
+- Modal galleries with navigation
 
-To learn more about Next.js, take a look at the following resources:
+### 💼 Business Features
+- Multi-step booking process
+- Fare estimation calculator
+- Driver recruitment system
+- Admin dashboard ready architecture
+- Customer review system
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deployment
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Docker Deployment
+```bash
+# Build and start all services
+docker-compose up --build
 
-## Deploy on Vercel
+# Run in production mode
+docker-compose -f docker-compose.prod.yml up
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Environment Variables
+```env
+DATABASE_URL="postgresql://kingtaxi:kingtaxi123@localhost:5432/kingtaxi_db"
+NEXTAUTH_SECRET="your-secret-key"
+NEXTAUTH_URL="http://localhost:3000"
+NODE_ENV="development"
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## Performance Optimizations
+
+- **Image Optimization**: Next.js automatic image optimization
+- **Code Splitting**: Automatic route-based code splitting
+- **Lazy Loading**: Components and images loaded on demand
+- **Caching**: Efficient caching strategies
+- **Minification**: CSS and JavaScript minification
+
+## Browser Support
+
+- Chrome 90+
+- Firefox 88+
+- Safari 14+
+- Edge 90+
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Support
+
+For support and questions:
+- Email: support@kingtaxi.co.uk
+- Phone: +44 123 456 7890
+
+---
+
+Built with ❤️ by the King Taxi development team
