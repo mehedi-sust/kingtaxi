@@ -6,10 +6,9 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useAuth } from '@/contexts/AuthContext';
-import AnimatedCar from './AnimatedCar';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -135,6 +134,7 @@ export default function Navbar() {
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="w-80">
+                  <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                   <div className="flex flex-col space-y-4 mt-8">
                     {navItems.map((item) => (
                       <Button key={item.name} variant="ghost" asChild className="justify-start">
@@ -164,9 +164,6 @@ export default function Navbar() {
             </div>
           </div>
         </div>
-
-        {/* Animated Car */}
-        <AnimatedCar />
 
       </div>
     </motion.nav>

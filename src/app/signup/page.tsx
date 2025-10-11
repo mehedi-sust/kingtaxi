@@ -366,7 +366,7 @@ export default function SignUp() {
               <div className="space-y-2">
                 <p className="flex items-center">
                   <Phone className="w-4 h-4 mr-2" />
-                  +44 123 456 7890
+                  +44 01233 367 357
                 </p>
                 <p className="flex items-center">
                   <Mail className="w-4 h-4 mr-2" />

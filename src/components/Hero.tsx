@@ -42,32 +42,43 @@ export default function Hero() {
             <span className="text-white font-medium">Trusted by 10,000+ Customers</span>
           </motion.div>
 
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold text-white leading-tight">
-            <motion.span 
-              className="block"
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
+          <div className="space-y-4">
+            {/* Premium Taxi Service - smaller text above */}
+            <motion.p
+              className="text-xl md:text-2xl lg:text-3xl font-medium text-white/90"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
             >
-              Premium
-            </motion.span>
-            <motion.span 
-              className="block bg-gradient-to-r from-red-500 to-red-600 bg-clip-text text-transparent"
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
+              Premium Taxi Service
+            </motion.p>
+            
+            {/* KING TAXI Logo */}
+            <motion.div
+              className="flex justify-center"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.4 }}
             >
-              Taxi Service
-            </motion.span>
-            <motion.span 
-              className="block text-3xl md:text-4xl lg:text-5xl font-medium mt-4 text-gray-200"
+              <Image
+                src="/logo.jpeg"
+                alt="King Taxi Logo"
+                width={400}
+                height={200}
+                className="object-contain max-w-full h-auto"
+                priority
+              />
+            </motion.div>
+            
+            <motion.p 
+              className="text-2xl md:text-3xl font-medium text-white/80"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.6 }}
+              transition={{ duration: 0.8, delay: 0.8 }}
             >
               in the UK
-            </motion.span>
-          </h1>
+            </motion.p>
+          </div>
           
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -101,9 +112,9 @@ export default function Hero() {
               size="lg" 
               className="text-lg px-10 py-6 bg-white/10 backdrop-blur-md border-white/30 text-white hover:bg-white/20 hover:text-white font-semibold rounded-full shadow-xl hover:shadow-white/25 transition-all duration-300 hover:scale-105"
             >
-              <Link href="tel:+441234567890" className="flex items-center space-x-2">
+              <Link href="tel:+4401233367357" className="flex items-center space-x-2">
                 <Phone className="w-5 h-5" />
-                <span>Call Now: +44 123 456 7890</span>
+                <span>Call Now: +44 01233 367 357</span>
               </Link>
             </Button>
           </motion.div>

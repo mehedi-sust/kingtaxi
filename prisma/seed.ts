@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, VehicleType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -142,6 +142,76 @@ async function main() {
   }
 
   console.log('✅ Sample reviews created');
+
+  // Create fare data from the image
+  const fares = [
+    // 4 Seater fares
+    {
+      fromLocation: 'Ashford',
+      toLocation: 'Gatwick',
+      vehicleType: VehicleType.FOUR_SEATER,
+      price: 110,
+      isActive: true,
+    },
+    {
+      fromLocation: 'Ashford',
+      toLocation: 'Heathrow',
+      vehicleType: VehicleType.FOUR_SEATER,
+      price: 150,
+      isActive: true,
+    },
+    {
+      fromLocation: 'Ashford',
+      toLocation: 'Standsted',
+      vehicleType: VehicleType.FOUR_SEATER,
+      price: 150,
+      isActive: true,
+    },
+    {
+      fromLocation: 'Ashford',
+      toLocation: 'Luton',
+      vehicleType: VehicleType.FOUR_SEATER,
+      price: 180,
+      isActive: true,
+    },
+    // 8 Seater fares
+    {
+      fromLocation: 'Ashford',
+      toLocation: 'Gatwick',
+      vehicleType: VehicleType.EIGHT_SEATER,
+      price: 140,
+      isActive: true,
+    },
+    {
+      fromLocation: 'Ashford',
+      toLocation: 'Heathrow',
+      vehicleType: VehicleType.EIGHT_SEATER,
+      price: 190,
+      isActive: true,
+    },
+    {
+      fromLocation: 'Ashford',
+      toLocation: 'Standsted',
+      vehicleType: VehicleType.EIGHT_SEATER,
+      price: 195,
+      isActive: true,
+    },
+    {
+      fromLocation: 'Ashford',
+      toLocation: 'Luton',
+      vehicleType: VehicleType.EIGHT_SEATER,
+      price: 240,
+      isActive: true,
+    },
+  ];
+
+  for (const fare of fares) {
+    await prisma.fare.create({
+      data: fare,
+    });
+  }
+
+  console.log('✅ Sample fares created');
 
   console.log('🎉 Database seeding completed successfully!');
 }

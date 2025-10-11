@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Facebook, Twitter, Instagram, Youtube, Phone, Mail, MapPin } from 'lucide-react';
 
@@ -34,7 +35,13 @@ export default function Footer() {
             className="space-y-4"
           >
             <div className="flex items-center space-x-2">
-              <h3 className="text-2xl font-bold text-red-600">King Taxi</h3>
+              <Image
+                src="/icon.jpeg"
+                alt="King Taxi Logo"
+                width={120}
+                height={60}
+                className="object-contain"
+              />
             </div>
             <p className="text-gray-300 text-sm leading-relaxed">
               Premium taxi service in the UK offering reliable, punctual, and quality transportation 
@@ -54,11 +61,11 @@ export default function Footer() {
             <div className="space-y-3">
               <div className="flex items-center space-x-3 text-gray-300">
                 <MapPin size={16} className="text-red-600 flex-shrink-0" />
-                <span className="text-sm">Ashford, Kent, United Kingdom</span>
+                <span className="text-sm">2 field end, Ashford, Kent, UK, TN24 0AP</span>
               </div>
               <div className="flex items-center space-x-3 text-gray-300">
                 <Phone size={16} className="text-red-600 flex-shrink-0" />
-                <span className="text-sm">+44 123 456 7890</span>
+                <span className="text-sm">+44 01233 367 357</span>
               </div>
               <div className="flex items-center space-x-3 text-gray-300">
                 <Mail size={16} className="text-red-600 flex-shrink-0" />

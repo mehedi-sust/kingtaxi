@@ -11,7 +11,9 @@ import {
   Calendar, 
   Percent,
   X,
-  Save
+  Save,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 interface Offer {
@@ -69,6 +71,8 @@ export default function OffersManager() {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(6);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -174,13 +178,23 @@ export default function OffersManager() {
     });
   };
 
+  // Pagination logic
+  const totalPages = Math.ceil(offers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentOffers = offers.slice(startIndex, endIndex);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Offers & Promotions</h2>
-          <p className="text-gray-600 mt-1">Manage promotional offers and vacation banners</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Offers & Promotions</h2>
+          <p className="text-gray-600 dark:text-gray-300 mt-1">Manage promotional offers and vacation banners</p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
@@ -193,38 +207,38 @@ export default function OffersManager() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <div className="text-2xl font-bold text-gray-900">{offers.length}</div>
-          <div className="text-sm text-gray-600">Total Offers</div>
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="text-2xl font-bold text-gray-900 dark:text-white">{offers.length}</div>
+          <div className="text-sm text-gray-600 dark:text-gray-300">Total Offers</div>
         </div>
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="text-2xl font-bold text-green-600">{offers.filter(o => o.isActive).length}</div>
-          <div className="text-sm text-gray-600">Active Offers</div>
+          <div className="text-sm text-gray-600 dark:text-gray-300">Active Offers</div>
         </div>
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="text-2xl font-bold text-yellow-600">{offers.filter(o => !o.isActive).length}</div>
-          <div className="text-sm text-gray-600">Inactive Offers</div>
+          <div className="text-sm text-gray-600 dark:text-gray-300">Inactive Offers</div>
         </div>
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="text-2xl font-bold text-blue-600">
             {Math.round(offers.reduce((acc, offer) => acc + offer.discount, 0) / offers.length) || 0}%
           </div>
-          <div className="text-sm text-gray-600">Avg. Discount</div>
+          <div className="text-sm text-gray-600 dark:text-gray-300">Avg. Discount</div>
         </div>
       </div>
 
       {/* Offers Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {offers.map((offer) => (
+        {currentOffers.map((offer) => (
           <motion.div
             key={offer.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200"
+            className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow duration-200"
           >
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">{offer.title}</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{offer.title}</h3>
                 <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full capitalize">
                   {offer.category}
                 </span>
@@ -251,14 +265,14 @@ export default function OffersManager() {
               </div>
             </div>
 
-            <p className="text-gray-600 text-sm mb-4">{offer.description}</p>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">{offer.description}</p>
 
             <div className="space-y-2 mb-4">
-              <div className="flex items-center text-sm text-gray-600">
+              <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
                 <Percent className="w-4 h-4 mr-2" />
                 {offer.discount}{offer.discountType === 'percentage' ? '%' : '£'} discount
               </div>
-              <div className="flex items-center text-sm text-gray-600">
+              <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
                 <Calendar className="w-4 h-4 mr-2" />
                 {offer.startDate} - {offer.endDate}
               </div>
@@ -278,17 +292,57 @@ export default function OffersManager() {
         ))}
       </div>
 
+      {/* Pagination */}
+      {offers.length > itemsPerPage && (
+        <div className="flex items-center justify-between bg-white dark:bg-gray-800 px-6 py-4 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center text-sm text-gray-700 dark:text-gray-300">
+            Showing {startIndex + 1} to {Math.min(endIndex, offers.length)} of {offers.length} offers
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <button
+                key={page}
+                onClick={() => goToPage(page)}
+                className={`px-3 py-1 text-sm rounded ${
+                  currentPage === page
+                    ? 'bg-red-600 text-white'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+            
+            <button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Create/Edit Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
           >
-            <div className="p-6 border-b border-gray-200">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <div className="flex justify-between items-center">
-                <h3 className="text-xl font-bold text-gray-900">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                   {editingOffer ? 'Edit Offer' : 'Create New Offer'}
                 </h3>
                 <button 
@@ -308,7 +362,7 @@ export default function OffersManager() {
               {/* Predefined Offers */}
               {!editingOffer && (
                 <div className="mb-6">
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Quick Start Templates</h4>
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Quick Start Templates</h4>
                   <div className="grid grid-cols-2 gap-2">
                     {predefinedOffers.map((predefined, index) => (
                       <button
@@ -324,10 +378,10 @@ export default function OffersManager() {
                             category: predefined.category
                           });
                         }}
-                        className="text-left p-3 border border-gray-200 rounded-lg hover:border-red-300 hover:bg-red-50 transition-colors duration-200"
+                        className="text-left p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900 transition-colors duration-200"
                       >
-                        <div className="font-medium text-sm text-gray-900">{predefined.title}</div>
-                        <div className="text-xs text-gray-600">{predefined.discount}% discount</div>
+                        <div className="font-medium text-sm text-gray-900 dark:text-white">{predefined.title}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-300">{predefined.discount}% discount</div>
                       </button>
                     ))}
                   </div>
@@ -337,7 +391,7 @@ export default function OffersManager() {
               {/* Form */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Offer Title *
                   </label>
                   <input
@@ -346,13 +400,13 @@ export default function OffersManager() {
                     value={formData.title}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                     placeholder="Enter offer title"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Description *
                   </label>
                   <textarea
@@ -361,14 +415,14 @@ export default function OffersManager() {
                     onChange={handleInputChange}
                     required
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none dark:bg-gray-700 dark:text-white"
                     placeholder="Describe your offer"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Discount Amount *
                     </label>
                     <input
@@ -379,13 +433,13 @@ export default function OffersManager() {
                       required
                       min="0"
                       step="0.01"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       placeholder="0"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Discount Type *
                     </label>
                     <select
@@ -393,7 +447,7 @@ export default function OffersManager() {
                       value={formData.discountType}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 dark:text-white"
                     >
                       <option value="percentage">Percentage (%)</option>
                       <option value="fixed">Fixed Amount (£)</option>
@@ -403,7 +457,7 @@ export default function OffersManager() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Start Date *
                     </label>
                     <input
@@ -412,12 +466,12 @@ export default function OffersManager() {
                       value={formData.startDate}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       End Date *
                     </label>
                     <input
@@ -426,20 +480,20 @@ export default function OffersManager() {
                       value={formData.endDate}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Category
                   </label>
                   <select
                     name="category"
                     value={formData.category}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 dark:text-white"
                   >
                     <option value="general">General</option>
                     <option value="seasonal">Seasonal</option>
@@ -450,7 +504,7 @@ export default function OffersManager() {
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
+              <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
                 <button
                   onClick={() => {
                     setShowCreateModal(false);

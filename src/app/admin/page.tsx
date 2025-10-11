@@ -12,10 +12,14 @@ import {
   Eye,
   CheckCircle,
   XCircle,
-  Shield
+  Shield,
+  MapPin,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import OffersManager from '@/components/OffersManager';
+import FareManager from '@/components/FareManager';
 
 interface User {
   id: string;
@@ -51,6 +55,9 @@ export default function AdminDashboard() {
     activeOffers: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [usersPage, setUsersPage] = useState(1);
+  const [driversPage, setDriversPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
@@ -138,11 +145,11 @@ export default function AdminDashboard() {
 
   if (!isAuthenticated || !user?.isAdmin) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20 flex items-center justify-center">
         <div className="text-center">
           <Shield className="w-16 h-16 text-red-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
-          <p className="text-gray-600 mb-4">You need admin privileges to access this page.</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Access Denied</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">You need admin privileges to access this page.</p>
           <button 
             onClick={() => router.push('/signin')}
             className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200"
@@ -165,6 +172,7 @@ export default function AdminDashboard() {
     { id: 'overview', name: 'Overview', icon: TrendingUp },
     { id: 'users', name: 'Users', icon: Users },
     { id: 'drivers', name: 'Driver Applications', icon: Car },
+    { id: 'fares', name: 'Fare Management', icon: MapPin },
     { id: 'offers', name: 'Offers & Promotions', icon: Calendar },
   ];
 
@@ -204,6 +212,25 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Error updating driver:', error);
     }
+  };
+
+  // Pagination logic
+  const usersTotalPages = Math.ceil(users.length / itemsPerPage);
+  const usersStartIndex = (usersPage - 1) * itemsPerPage;
+  const usersEndIndex = usersStartIndex + itemsPerPage;
+  const currentUsers = users.slice(usersStartIndex, usersEndIndex);
+
+  const driversTotalPages = Math.ceil(drivers.length / itemsPerPage);
+  const driversStartIndex = (driversPage - 1) * itemsPerPage;
+  const driversEndIndex = driversStartIndex + itemsPerPage;
+  const currentDrivers = drivers.slice(driversStartIndex, driversEndIndex);
+
+  const goToUsersPage = (page: number) => {
+    setUsersPage(Math.max(1, Math.min(page, usersTotalPages)));
+  };
+
+  const goToDriversPage = (page: number) => {
+    setDriversPage(Math.max(1, Math.min(page, driversTotalPages)));
   };
 
   return (
@@ -257,16 +284,16 @@ export default function AdminDashboard() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+                  className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700"
                 >
                   <div className="flex items-center">
                     <div className={`p-3 rounded-lg ${stat.bgColor} mr-4`}>
                       <stat.icon className={`w-6 h-6 ${stat.color}`} />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-600">{stat.title}</p>
+                      <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{stat.title}</p>
                       <div className="flex items-center">
-                        <p className="text-2xl font-semibold text-gray-900">{stat.value}</p>
+                        <p className="text-2xl font-semibold text-gray-900 dark:text-white">{stat.value}</p>
                         <span className="ml-2 text-sm font-medium text-green-600">{stat.change}</span>
                       </div>
                     </div>
@@ -277,9 +304,9 @@ export default function AdminDashboard() {
 
             {/* Recent Activity */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-                <div className="p-6 border-b border-gray-100">
-                  <h3 className="text-lg font-semibold text-gray-900">Recent User Registrations</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div className="p-6 border-b border-gray-100 dark:border-gray-700">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Recent User Registrations</h3>
                 </div>
                 <div className="p-6">
                   <div className="space-y-4">
@@ -302,9 +329,9 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-                <div className="p-6 border-b border-gray-100">
-                  <h3 className="text-lg font-semibold text-gray-900">Driver Applications</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div className="p-6 border-b border-gray-100 dark:border-gray-700">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Driver Applications</h3>
                 </div>
                 <div className="p-6">
                   <div className="space-y-4">
@@ -337,10 +364,10 @@ export default function AdminDashboard() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-              <div className="p-6 border-b border-gray-100">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+              <div className="p-6 border-b border-gray-100 dark:border-gray-700">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-gray-900">User Management</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">User Management</h3>
                   <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
                     Export Users
                   </button>
@@ -348,17 +375,17 @@ export default function AdminDashboard() {
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">User</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {users.map((user) => (
+                    {currentUsers.map((user) => (
                       <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
@@ -414,6 +441,46 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+              
+              {/* Users Pagination */}
+              {users.length > itemsPerPage && (
+                <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center text-sm text-gray-700 dark:text-gray-300">
+                    Showing {usersStartIndex + 1} to {Math.min(usersEndIndex, users.length)} of {users.length} users
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => goToUsersPage(usersPage - 1)}
+                      disabled={usersPage === 1}
+                      className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    
+                    {Array.from({ length: usersTotalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => goToUsersPage(page)}
+                        className={`px-3 py-1 text-sm rounded ${
+                          usersPage === page
+                            ? 'bg-red-600 text-white'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    
+                    <button
+                      onClick={() => goToUsersPage(usersPage + 1)}
+                      disabled={usersPage === usersTotalPages}
+                      className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -425,23 +492,23 @@ export default function AdminDashboard() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="text-lg font-semibold text-gray-900">Driver Applications</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+              <div className="p-6 border-b border-gray-100 dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Driver Applications</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Driver</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Experience</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Availability</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Driver</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Experience</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Availability</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {drivers.map((driver) => (
+                    {currentDrivers.map((driver) => (
                       <tr key={driver.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
@@ -495,7 +562,58 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+              
+              {/* Drivers Pagination */}
+              {drivers.length > itemsPerPage && (
+                <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center text-sm text-gray-700 dark:text-gray-300">
+                    Showing {driversStartIndex + 1} to {Math.min(driversEndIndex, drivers.length)} of {drivers.length} drivers
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => goToDriversPage(driversPage - 1)}
+                      disabled={driversPage === 1}
+                      className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    
+                    {Array.from({ length: driversTotalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => goToDriversPage(page)}
+                        className={`px-3 py-1 text-sm rounded ${
+                          driversPage === page
+                            ? 'bg-red-600 text-white'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    
+                    <button
+                      onClick={() => goToDriversPage(driversPage + 1)}
+                      disabled={driversPage === driversTotalPages}
+                      className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
+          </motion.div>
+        )}
+
+        {/* Fares Tab */}
+        {activeTab === 'fares' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <FareManager />
           </motion.div>
         )}
 
@@ -517,10 +635,10 @@ export default function AdminDashboard() {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              className="bg-white rounded-2xl max-w-md w-full p-6"
+              className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6"
             >
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-gray-900">User Details</h3>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">User Details</h3>
                 <button 
                   onClick={() => setShowUserModal(false)}
                   className="text-gray-400 hover:text-gray-600"

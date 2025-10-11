@@ -93,7 +93,7 @@ export default function About() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 bg-white">
+      <section className="py-16 bg-white dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
@@ -173,7 +173,7 @@ export default function About() {
       </section>
 
       {/* Values Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -182,10 +182,10 @@ export default function About() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6">
               Our Core Values
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
               These fundamental principles guide everything we do and shape the experience we deliver to our customers.
             </p>
           </motion.div>
@@ -203,8 +203,8 @@ export default function About() {
                 <div className={`inline-flex items-center justify-center w-16 h-16 ${value.bgColor} rounded-full mb-6`}>
                   <value.icon className={`w-8 h-8 ${value.color}`} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">{value.title}</h3>
-                <p className="text-gray-600 leading-relaxed">{value.description}</p>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">{value.title}</h3>
+                <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{value.description}</p>
               </motion.div>
             ))}
           </div>
@@ -212,7 +212,7 @@ export default function About() {
       </section>
 
       {/* Services Section */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 bg-gray-50 dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <motion.div
@@ -221,10 +221,10 @@ export default function About() {
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
             >
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6">
                 Comprehensive Services
               </h2>
-              <p className="text-gray-600 mb-8 leading-relaxed">
+              <p className="text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
                 We offer a wide range of transportation services to meet all your needs. 
                 From individual rides to corporate accounts, we have you covered.
               </p>
@@ -239,7 +239,7 @@ export default function About() {
                     className="flex items-center space-x-3"
                   >
                     <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                    <span className="text-gray-700">{service}</span>
+                    <span className="text-gray-700 dark:text-gray-300">{service}</span>
                   </motion.div>
                 ))}
               </div>
@@ -252,17 +252,17 @@ export default function About() {
               viewport={{ once: true }}
               className="grid grid-cols-1 sm:grid-cols-2 gap-6"
             >
-              <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
                 <Car className="w-12 h-12 text-red-600 mb-4" />
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Modern Fleet</h3>
-                <p className="text-gray-600 text-sm">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Modern Fleet</h3>
+                <p className="text-gray-600 dark:text-gray-300 text-sm">
                   Clean, comfortable, and regularly maintained vehicles for your safety and comfort.
                 </p>
               </div>
-              <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
                 <MapPin className="w-12 h-12 text-red-600 mb-4" />
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Wide Coverage</h3>
-                <p className="text-gray-600 text-sm">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Wide Coverage</h3>
+                <p className="text-gray-600 dark:text-gray-300 text-sm">
                   Serving Ashford and surrounding areas, plus airport transfers across the UK.
                 </p>
               </div>
@@ -272,7 +272,7 @@ export default function About() {
       </section>
 
       {/* Drivers Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -281,10 +281,10 @@ export default function About() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6">
               Our Professional Drivers
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
               Our drivers are trusted, helpful and knowledgeable, getting you to your destination 
               quickly and safely. They come from all backgrounds and are all CRB checked.
             </p>
@@ -313,10 +313,10 @@ export default function About() {
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
             >
-              <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">
+              <h3 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-6">
                 Join Our Driving Team
               </h3>
-              <p className="text-gray-600 mb-8 leading-relaxed">
+              <p className="text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">
                 We're always looking for professional, reliable drivers to join our team. 
                 We offer competitive rates, flexible hours, and a supportive work environment.
               </p>
@@ -331,7 +331,7 @@ export default function About() {
                     className="flex items-center space-x-3"
                   >
                     <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                    <span className="text-gray-700">{benefit}</span>
+                    <span className="text-gray-700 dark:text-gray-300">{benefit}</span>
                   </motion.div>
                 ))}
               </div>

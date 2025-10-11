@@ -116,24 +116,24 @@ export default function DriverApplication() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50 flex items-center justify-center px-4 pt-20">
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center px-4 pt-20">
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6 }}
-          className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center"
+          className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 text-center"
         >
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Application Submitted!</h2>
-          <p className="text-gray-600 mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Application Submitted!</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
             Thank you for your interest in joining King Taxi! Your driver application has been submitted successfully. 
             Our recruitment team will review your application and contact you within 48 hours.
           </p>
-          <div className="bg-blue-50 rounded-lg p-4 mb-6">
-            <h3 className="font-semibold text-blue-900 mb-2">Next Steps:</h3>
-            <ul className="text-sm text-blue-800 space-y-1 text-left">
+          <div className="bg-blue-50 dark:bg-blue-900 rounded-lg p-4 mb-6">
+            <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Next Steps:</h3>
+            <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 text-left">
               <li>• Application review (1-2 days)</li>
               <li>• Phone interview</li>
               <li>• CRB/DBS check</li>
@@ -175,7 +175,7 @@ export default function DriverApplication() {
       </section>
 
       {/* Benefits Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white dark:bg-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -184,10 +184,10 @@ export default function DriverApplication() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6">
               Why Drive with King Taxi?
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
               Join a company that cares about its drivers and provides excellent working conditions.
             </p>
           </motion.div>
@@ -205,8 +205,8 @@ export default function DriverApplication() {
                 <div className={`inline-flex items-center justify-center w-16 h-16 ${benefit.bgColor} rounded-full mb-6`}>
                   <benefit.icon className={`w-8 h-8 ${benefit.color}`} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">{benefit.title}</h3>
-                <p className="text-gray-600 leading-relaxed">{benefit.description}</p>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">{benefit.title}</h3>
+                <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{benefit.description}</p>
               </motion.div>
             ))}
           </div>
@@ -214,7 +214,7 @@ export default function DriverApplication() {
       </section>
 
       {/* Application Form Section */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 bg-gray-50 dark:bg-gray-900">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             {/* Form */}
@@ -224,17 +224,17 @@ export default function DriverApplication() {
                 whileInView={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6 }}
                 viewport={{ once: true }}
-                className="bg-white rounded-2xl shadow-xl p-8"
+                className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8"
               >
                 <div className="mb-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Driver Application Form</h2>
-                  <p className="text-gray-600">Fill out the form below to apply for a driving position with King Taxi.</p>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Driver Application Form</h2>
+                  <p className="text-gray-600 dark:text-gray-300">Fill out the form below to apply for a driving position with King Taxi.</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         First Name *
                       </label>
                       <div className="relative">
@@ -246,14 +246,14 @@ export default function DriverApplication() {
                           value={formData.firstName}
                           onChange={handleInputChange}
                           required
-                          className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200"
+                          className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                           placeholder="Enter your first name"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Last Name *
                       </label>
                       <div className="relative">
@@ -265,7 +265,7 @@ export default function DriverApplication() {
                           value={formData.lastName}
                           onChange={handleInputChange}
                           required
-                          className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200"
+                          className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                           placeholder="Enter your last name"
                         />
                       </div>
@@ -274,7 +274,7 @@ export default function DriverApplication() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Email Address *
                       </label>
                       <div className="relative">
@@ -286,14 +286,14 @@ export default function DriverApplication() {
                           value={formData.email}
                           onChange={handleInputChange}
                           required
-                          className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200"
+                          className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                           placeholder="Enter your email address"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label htmlFor="mobile" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="mobile" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Mobile Number *
                       </label>
                       <div className="relative">
@@ -305,7 +305,7 @@ export default function DriverApplication() {
                           value={formData.mobile}
                           onChange={handleInputChange}
                           required
-                          className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200"
+                          className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                           placeholder="Enter your mobile number"
                         />
                       </div>
@@ -313,7 +313,7 @@ export default function DriverApplication() {
                   </div>
 
                   <div>
-                    <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="address" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Full Address *
                     </label>
                     <div className="relative">
@@ -325,7 +325,7 @@ export default function DriverApplication() {
                         value={formData.address}
                         onChange={handleInputChange}
                         required
-                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200"
+                        className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                         placeholder="Enter your full address"
                       />
                     </div>
@@ -333,7 +333,7 @@ export default function DriverApplication() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Date of Birth *
                       </label>
                       <div className="relative">
@@ -345,13 +345,13 @@ export default function DriverApplication() {
                           value={formData.dateOfBirth}
                           onChange={handleInputChange}
                           required
-                          className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200"
+                          className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label htmlFor="licenseNumber" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="licenseNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Driving License Number *
                       </label>
                       <input
@@ -361,7 +361,7 @@ export default function DriverApplication() {
                         value={formData.licenseNumber}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200"
+                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                         placeholder="Enter your license number"
                       />
                     </div>
@@ -369,7 +369,7 @@ export default function DriverApplication() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label htmlFor="experience" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="experience" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Driving Experience *
                       </label>
                       <select
@@ -378,7 +378,7 @@ export default function DriverApplication() {
                         value={formData.experience}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 bg-white"
+                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 bg-white dark:bg-gray-700 dark:text-white"
                       >
                         <option value="">Select experience</option>
                         <option value="3-5 years">3-5 years</option>
@@ -389,7 +389,7 @@ export default function DriverApplication() {
                     </div>
 
                     <div>
-                      <label htmlFor="availability" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="availability" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Availability *
                       </label>
                       <select
@@ -398,7 +398,7 @@ export default function DriverApplication() {
                         value={formData.availability}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 bg-white"
+                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 bg-white dark:bg-gray-700 dark:text-white"
                       >
                         <option value="">Select availability</option>
                         <option value="Full-time">Full-time</option>
@@ -410,7 +410,7 @@ export default function DriverApplication() {
                   </div>
 
                   <div>
-                    <label htmlFor="vehicleOwned" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="vehicleOwned" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Do you own a suitable vehicle?
                     </label>
                     <select
@@ -418,7 +418,7 @@ export default function DriverApplication() {
                       name="vehicleOwned"
                       value={formData.vehicleOwned}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 bg-white"
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 bg-white dark:bg-gray-700 dark:text-white"
                     >
                       <option value="">Select option</option>
                       <option value="Yes - suitable for taxi work">Yes - suitable for taxi work</option>
@@ -428,7 +428,7 @@ export default function DriverApplication() {
                   </div>
 
                   <div>
-                    <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="message" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Additional Information
                     </label>
                     <div className="relative">
@@ -439,7 +439,7 @@ export default function DriverApplication() {
                         value={formData.message}
                         onChange={handleInputChange}
                         rows={4}
-                        className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 resize-none"
+                        className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 resize-none dark:bg-gray-700 dark:text-white"
                         placeholder="Tell us about your previous driving experience, why you want to join King Taxi, or any other relevant information..."
                       />
                     </div>
@@ -477,13 +477,13 @@ export default function DriverApplication() {
                 viewport={{ once: true }}
                 className="space-y-8 sticky top-8"
               >
-                <div className="bg-white rounded-2xl shadow-xl p-8">
-                  <h3 className="text-xl font-bold text-gray-900 mb-6">Requirements</h3>
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Requirements</h3>
                   <div className="space-y-4">
                     {requirements.map((requirement, index) => (
                       <div key={index} className="flex items-start">
                         <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        <span className="text-gray-700 ml-3 text-sm">{requirement}</span>
+                        <span className="text-gray-700 dark:text-gray-300 ml-3 text-sm">{requirement}</span>
                       </div>
                     ))}
                   </div>
@@ -497,7 +497,7 @@ export default function DriverApplication() {
                   <div className="space-y-3">
                     <div className="flex items-center">
                       <Phone className="w-4 h-4 mr-2" />
-                      <span className="text-sm">+44 123 456 7890</span>
+                      <span className="text-sm">+44 01233 367 357</span>
                     </div>
                     <div className="flex items-center">
                       <Mail className="w-4 h-4 mr-2" />

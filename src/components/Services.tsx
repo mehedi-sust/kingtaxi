@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { CheckCircle, Users, Shield, Clock, Star, ArrowRight } from 'lucide-react';
+import { CheckCircle, Users, Shield, Clock, Star, ArrowRight, Car, MapPin, Calendar, Plane, Camera, ShoppingBag, UserCheck, Globe } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,13 +38,78 @@ export default function Services() {
     },
   ];
 
+  const comprehensiveServices = [
+    {
+      title: 'CRB Qualified Drivers',
+      description: 'All our drivers are CRB checked and professionally trained to ensure your safety and comfort.',
+      icon: UserCheck,
+      color: 'text-green-600',
+      bgColor: 'bg-green-100',
+    },
+    {
+      title: 'UK-Wide Taxi Service',
+      description: 'Comprehensive taxi service coverage across the entire United Kingdom for all your travel needs.',
+      icon: Globe,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-100',
+    },
+    {
+      title: '24x7 Taxi Service',
+      description: 'Round-the-clock availability ensuring you can book a taxi anytime, day or night.',
+      icon: Clock,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-100',
+    },
+    {
+      title: 'Event Booking',
+      description: 'Special event transportation for weddings, parties, corporate events, and special occasions.',
+      icon: Calendar,
+      color: 'text-pink-600',
+      bgColor: 'bg-pink-100',
+    },
+    {
+      title: 'Airport Transfer',
+      description: 'Reliable airport pickup and drop-off services with flight monitoring and meet & greet options.',
+      icon: Plane,
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-100',
+    },
+    {
+      title: 'Sightseeing Tours',
+      description: 'Guided sightseeing tours and tourist transportation to explore local attractions and landmarks.',
+      icon: Camera,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-100',
+    },
+    {
+      title: 'Shopping Trips',
+      description: 'Convenient transportation for shopping trips with waiting time and multiple stop options.',
+      icon: ShoppingBag,
+      color: 'text-red-600',
+      bgColor: 'bg-red-100',
+    },
+    {
+      title: 'Local & Long Distance',
+      description: 'Both local city rides and long-distance intercity travel with comfortable vehicles.',
+      icon: MapPin,
+      color: 'text-teal-600',
+      bgColor: 'bg-teal-100',
+    },
+  ];
+
   const features = [
-    'Trusted, helpful and knowledgeable drivers',
-    'Modern, clean and reliable fleet',
-    'Getting you to your destination quickly and safely',
-    'Unbeatable prices and excellent customer service',
-    'CRB checked drivers from various backgrounds',
-    'Regular vehicle servicing and weekly valeting',
+    'CRB checked and professionally trained drivers',
+    'Modern, clean and well-maintained fleet',
+    'GPS tracking and real-time journey monitoring',
+    'Competitive pricing with transparent fare structure',
+    'Multiple vehicle types: saloon, estate, MPV, and executive cars',
+    'Advanced booking system with instant confirmation',
+    'Meet & greet service for airport transfers',
+    'Child seats and wheelchair accessible vehicles available',
+    'Corporate accounts and business travel solutions',
+    'Emergency and urgent ride services',
+    'Multi-stop journeys and waiting time options',
+    'Professional uniformed drivers with local knowledge',
   ];
 
   return (
@@ -116,6 +181,74 @@ export default function Services() {
             </motion.div>
           ))}
         </div>
+
+        {/* Comprehensive Services Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+          className="mb-20"
+        >
+          <div className="text-center mb-16">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              viewport={{ once: true }}
+              className="inline-flex items-center space-x-2 bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full px-6 py-3 mb-8"
+            >
+              <Car className="w-5 h-5" />
+              <span className="font-semibold">Our Services</span>
+            </motion.div>
+            <h3 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+              Comprehensive Taxi Services
+            </h3>
+            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
+              From airport transfers to sightseeing tours, we provide a complete range of professional taxi services 
+              to meet all your transportation needs across the UK.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {comprehensiveServices.map((service, index) => (
+              <motion.div
+                key={service.title}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                viewport={{ once: true }}
+                whileHover={{ y: -5 }}
+                className="group flex"
+              >
+                <Card className="hover:shadow-xl transition-all duration-300 flex flex-col bg-white dark:bg-gray-800 border-0 shadow-md group-hover:shadow-blue-500/10 w-full">
+                  <CardHeader className="p-6 flex-shrink-0">
+                    <motion.div 
+                      className={`inline-flex items-center justify-center w-14 h-14 ${service.bgColor} rounded-xl mb-4 group-hover:scale-105 transition-transform duration-300`}
+                      whileHover={{ rotate: 3 }}
+                    >
+                      <service.icon className={`w-7 h-7 ${service.color}`} />
+                    </motion.div>
+                    <CardTitle className="text-lg font-bold text-gray-900 dark:text-white mb-3">{service.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 pt-0 flex flex-col flex-grow">
+                    <p className="text-gray-600 dark:text-gray-300 mb-4 leading-relaxed text-sm flex-grow">{service.description}</p>
+                    <Button 
+                      variant="link" 
+                      asChild 
+                      className="p-0 h-auto text-blue-600 dark:text-blue-400 font-semibold hover:text-blue-700 dark:hover:text-blue-300 group-hover:translate-x-1 transition-transform duration-300 text-sm self-start"
+                    >
+                      <Link href="/book" className="flex items-center space-x-1">
+                        <span>Book Now</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
 
         {/* Features Section */}
         <motion.div
