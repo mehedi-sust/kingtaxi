@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { 
@@ -17,56 +17,106 @@ import {
   Shield,
   Award
 } from 'lucide-react';
+import { apiClient } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+
+function profileStorageKey(identifier: string | undefined) {
+  const raw = (identifier || '').trim().toLowerCase();
+  const safe = raw.replace(/[^a-z0-9_-]/gi, '_');
+  return safe ? `kingtaxi_profile_${safe}` : 'kingtaxi_profile';
+}
 
 export default function DriverApplication() {
+  const { user, isAuthenticated } = useAuth();
+
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    first_name: '',
+    last_name: '',
     email: '',
     mobile: '',
     address: '',
-    dateOfBirth: '',
-    licenseNumber: '',
+    date_of_birth: '',
+    license_number: '',
     experience: '',
     availability: '',
-    vehicleOwned: '',
+    vehicle_owned: '',
     message: '',
   });
 
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    let cancelled = false;
+    const identifier = user?.identifier ?? '';
+    const looksLikeEmail = identifier.includes('@');
+
+    const splitFullName = (fullName: string) => {
+      const parts = fullName.trim().split(/\s+/).filter(Boolean);
+      const first = parts[0] || '';
+      const last = parts.slice(1).join(' ');
+      return { first, last };
+    };
+
+    const applyPrefill = (account: any) => {
+      if (cancelled) return;
+
+      const fullName =
+        (typeof account?.full_name === 'string' && account.full_name) ||
+        (typeof account?.fullName === 'string' && account.fullName) ||
+        (typeof account?.name === 'string' && account.name) ||
+        '';
+      const email =
+        (typeof account?.email === 'string' && account.email) || (looksLikeEmail ? identifier : '');
+      const phone =
+        (typeof account?.phone === 'string' && account.phone) ||
+        (typeof account?.mobile === 'string' && account.mobile) ||
+        (!looksLikeEmail ? identifier : '');
+      const names = fullName ? splitFullName(fullName) : { first: '', last: '' };
+
+      setFormData((prev) => ({
+        ...prev,
+        first_name: prev.first_name || names.first,
+        last_name: prev.last_name || names.last,
+        email: prev.email || email,
+        mobile: prev.mobile || phone,
+      }));
+    };
+
+    const load = async () => {
+      try {
+        const data = await apiClient.getUser();
+        applyPrefill(data);
+        return;
+      } catch {}
+
+      try {
+        const key = profileStorageKey(identifier);
+        const raw = localStorage.getItem(key) ?? localStorage.getItem('kingtaxi_profile');
+        if (!raw) return;
+        applyPrefill(JSON.parse(raw));
+      } catch {}
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, user?.identifier]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/drivers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        setSubmitted(true);
-      } else {
-        const errorData = await response.json();
-        console.error('Driver application failed:', errorData.error);
-        alert(`Application failed: ${errorData.error}`);
-      }
+      await apiClient.createDriver(formData);
+      setSubmitted(true);
     } catch (error) {
       console.error('Driver application error:', error);
-      alert('An error occurred while submitting your application. Please try again.');
+      alert(`Application failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
@@ -243,8 +293,8 @@ export default function DriverApplication() {
                           type="text"
                           id="firstName"
                           name="firstName"
-                          value={formData.firstName}
-                          onChange={handleInputChange}
+                          value={formData.first_name}
+                          onChange={(e) => setFormData(prev => ({ ...prev, first_name: e.target.value }))}
                           required
                           className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                           placeholder="Enter your first name"
@@ -262,8 +312,8 @@ export default function DriverApplication() {
                           type="text"
                           id="lastName"
                           name="lastName"
-                          value={formData.lastName}
-                          onChange={handleInputChange}
+                          value={formData.last_name}
+                          onChange={(e) => setFormData(prev => ({ ...prev, last_name: e.target.value }))}
                           required
                           className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                           placeholder="Enter your last name"
@@ -284,7 +334,7 @@ export default function DriverApplication() {
                           id="email"
                           name="email"
                           value={formData.email}
-                          onChange={handleInputChange}
+                          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                           required
                           className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                           placeholder="Enter your email address"
@@ -303,7 +353,7 @@ export default function DriverApplication() {
                           id="mobile"
                           name="mobile"
                           value={formData.mobile}
-                          onChange={handleInputChange}
+                          onChange={(e) => setFormData(prev => ({ ...prev, mobile: e.target.value }))}
                           required
                           className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                           placeholder="Enter your mobile number"
@@ -323,7 +373,7 @@ export default function DriverApplication() {
                         id="address"
                         name="address"
                         value={formData.address}
-                        onChange={handleInputChange}
+                        onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
                         required
                         className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                         placeholder="Enter your full address"
@@ -342,8 +392,8 @@ export default function DriverApplication() {
                           type="date"
                           id="dateOfBirth"
                           name="dateOfBirth"
-                          value={formData.dateOfBirth}
-                          onChange={handleInputChange}
+                          value={formData.date_of_birth}
+                          onChange={(e) => setFormData(prev => ({ ...prev, date_of_birth: e.target.value }))}
                           required
                           className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                         />
@@ -358,8 +408,8 @@ export default function DriverApplication() {
                         type="text"
                         id="licenseNumber"
                         name="licenseNumber"
-                        value={formData.licenseNumber}
-                        onChange={handleInputChange}
+                        value={formData.license_number}
+                        onChange={(e) => setFormData(prev => ({ ...prev, license_number: e.target.value }))}
                         required
                         className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                         placeholder="Enter your license number"
@@ -376,7 +426,7 @@ export default function DriverApplication() {
                         id="experience"
                         name="experience"
                         value={formData.experience}
-                        onChange={handleInputChange}
+                        onChange={(e) => setFormData(prev => ({ ...prev, experience: e.target.value }))}
                         required
                         className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 bg-white dark:bg-gray-700 dark:text-white"
                       >
@@ -396,7 +446,7 @@ export default function DriverApplication() {
                         id="availability"
                         name="availability"
                         value={formData.availability}
-                        onChange={handleInputChange}
+                        onChange={(e) => setFormData(prev => ({ ...prev, availability: e.target.value }))}
                         required
                         className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 bg-white dark:bg-gray-700 dark:text-white"
                       >
@@ -416,8 +466,8 @@ export default function DriverApplication() {
                     <select
                       id="vehicleOwned"
                       name="vehicleOwned"
-                      value={formData.vehicleOwned}
-                      onChange={handleInputChange}
+                      value={formData.vehicle_owned}
+                      onChange={(e) => setFormData(prev => ({ ...prev, vehicle_owned: e.target.value }))}
                       className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 bg-white dark:bg-gray-700 dark:text-white"
                     >
                       <option value="">Select option</option>
@@ -437,7 +487,7 @@ export default function DriverApplication() {
                         id="message"
                         name="message"
                         value={formData.message}
-                        onChange={handleInputChange}
+                        onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
                         rows={4}
                         className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 resize-none dark:bg-gray-700 dark:text-white"
                         placeholder="Tell us about your previous driving experience, why you want to join King Taxi, or any other relevant information..."
@@ -497,7 +547,9 @@ export default function DriverApplication() {
                   <div className="space-y-3">
                     <div className="flex items-center">
                       <Phone className="w-4 h-4 mr-2" />
-                      <span className="text-sm">+44 01233 367 357</span>
+                      <a href="tel:+4401233367357" className="text-sm hover:underline">
+                        +44 01233 367 357
+                      </a>
                     </div>
                     <div className="flex items-center">
                       <Mail className="w-4 h-4 mr-2" />

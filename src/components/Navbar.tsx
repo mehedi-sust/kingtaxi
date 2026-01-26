@@ -3,10 +3,18 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion } from 'framer-motion';
-import { Menu } from 'lucide-react';
+import { Menu, User as UserIcon, LogOut, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -34,25 +42,18 @@ export default function Navbar() {
   ];
 
   return (
-    <motion.nav
+    <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
         scrolled 
           ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl shadow-2xl border-b border-gray-200/20 dark:border-gray-700/20' 
           : 'bg-white/80 dark:bg-gray-900/80 backdrop-blur-md'
       }`}
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.6, type: "spring", stiffness: 100 }}
     >
       <div className="relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             {/* Logo */}
-            <motion.div
-              className="flex-shrink-0 flex items-center"
-              whileHover={{ scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 400, damping: 10 }}
-            >
+            <div className="flex-shrink-0 flex items-center">
               <Link href="/" className="flex items-center">
                 <Image
                   src="/logo.jpeg"
@@ -62,18 +63,13 @@ export default function Navbar() {
                   className="rounded-lg"
                 />
               </Link>
-            </motion.div>
+            </div>
 
             {/* Desktop Navigation */}
             <div className="hidden md:block">
               <div className="ml-10 flex items-baseline space-x-2">
                 {navItems.map((item, index) => (
-                  <motion.div
-                    key={item.name}
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
+                  <div key={item.name}>
                     <Link
                       href={item.href}
                       className="text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300 relative group hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -81,7 +77,7 @@ export default function Navbar() {
                       {item.name}
                       <span className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-red-500 to-red-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 rounded-full"></span>
                     </Link>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -90,18 +86,54 @@ export default function Navbar() {
             <div className="hidden md:flex items-center space-x-3">
               <ThemeToggle />
               {isAuthenticated ? (
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    Welcome, {user?.firstName}
-                  </span>
-                  <Button 
-                    variant="ghost" 
-                    onClick={logout}
-                    className="text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800 font-semibold"
-                  >
-                    Logout
-                  </Button>
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800 font-semibold"
+                    >
+                      <Avatar className="size-8">
+                        <AvatarFallback className="text-xs">
+                          {(user?.identifier?.[0] || 'U').toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="max-w-[180px] truncate">
+                        {user?.identifier || (user?.isAdmin ? 'Admin' : 'Account')}
+                      </span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel className="flex items-center gap-2">
+                      <UserIcon className="h-4 w-4" />
+                      <span className="truncate">{user?.isAdmin ? 'Admin Account' : 'Account'}</span>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/account" className="cursor-pointer">
+                        <UserIcon className="h-4 w-4 mr-2" />
+                        Account
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/bookings" className="cursor-pointer">
+                        <History className="h-4 w-4 mr-2" />
+                        Booking History
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        logout();
+                      }}
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : (
                 <>
                   <Button 
@@ -147,16 +179,43 @@ export default function Navbar() {
                       <div className="flex justify-center pb-2">
                         <ThemeToggle />
                       </div>
-                      <Button variant="ghost" asChild className="w-full justify-start">
-                        <Link href="/signin" onClick={() => setIsOpen(false)}>
-                          Sign In
-                        </Link>
-                      </Button>
-                      <Button asChild className="w-full">
-                        <Link href="/signup" onClick={() => setIsOpen(false)}>
-                          Sign Up
-                        </Link>
-                      </Button>
+                      {isAuthenticated ? (
+                        <>
+                          <Button variant="ghost" asChild className="w-full justify-start">
+                            <Link href="/account" onClick={() => setIsOpen(false)}>
+                              Account
+                            </Link>
+                          </Button>
+                          <Button variant="ghost" asChild className="w-full justify-start">
+                            <Link href="/bookings" onClick={() => setIsOpen(false)}>
+                              Booking History
+                            </Link>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start"
+                            onClick={() => {
+                              logout();
+                              setIsOpen(false);
+                            }}
+                          >
+                            Logout
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button variant="ghost" asChild className="w-full justify-start">
+                            <Link href="/signin" onClick={() => setIsOpen(false)}>
+                              Sign In
+                            </Link>
+                          </Button>
+                          <Button asChild className="w-full">
+                            <Link href="/signup" onClick={() => setIsOpen(false)}>
+                              Sign Up
+                            </Link>
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </SheetContent>
@@ -164,8 +223,7 @@ export default function Navbar() {
             </div>
           </div>
         </div>
-
       </div>
-    </motion.nav>
+    </nav>
   );
 }

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight, Car, Users, Plane, Zap } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Gallery() {
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -291,12 +292,18 @@ export default function Gallery() {
                       </div>
 
                       <div className="space-y-3">
-                        <button className="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors duration-200">
+                        <Link
+                          href="/book"
+                          className="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors duration-200 text-center block"
+                        >
                           Book This Vehicle
-                        </button>
-                        <button className="w-full border-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white py-3 px-6 rounded-lg font-semibold transition-all duration-200">
+                        </Link>
+                        <Link
+                          href="/book"
+                          className="w-full border-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white py-3 px-6 rounded-lg font-semibold transition-all duration-200 text-center block"
+                        >
                           Get Quote
-                        </button>
+                        </Link>
                       </div>
                     </div>
                   </div>
@@ -324,12 +331,18 @@ export default function Gallery() {
               safety, and reliability that King Taxi is known for.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-white text-red-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors duration-200 shadow-lg">
+              <Link
+                href="/book"
+                className="bg-white text-red-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors duration-200 shadow-lg"
+              >
                 Book Now
-              </button>
-              <button className="border-2 border-white text-white hover:bg-white hover:text-red-600 px-8 py-4 rounded-lg text-lg font-semibold transition-all duration-200">
-                Call: +44 123 456 7890
-              </button>
+              </Link>
+              <a
+                href="tel:+4401233367357"
+                className="border-2 border-white text-white hover:bg-white hover:text-red-600 px-8 py-4 rounded-lg text-lg font-semibold transition-all duration-200"
+              >
+                Call: +44 01233 367 357
+              </a>
             </div>
           </motion.div>
         </div>

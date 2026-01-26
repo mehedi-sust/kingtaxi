@@ -1,15 +1,18 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import apiClient from '@/lib/api';
 
 interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  accountType: 'personal' | 'business';
+  token: string;
   isAdmin: boolean;
-  isVerified: boolean;
+  identifier?: string;
+}
+
+function profileStorageKey(identifier: string | undefined) {
+  const raw = (identifier || '').trim().toLowerCase();
+  const safe = raw.replace(/[^a-z0-9_-]/gi, '_');
+  return safe ? `kingtaxi_profile_${safe}` : 'kingtaxi_profile';
 }
 
 interface AuthContextType {
@@ -27,63 +30,93 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored user data on mount
-    const storedUser = localStorage.getItem('kingtaxi_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    const token = localStorage.getItem('kingtaxi_token');
+    const identifier = localStorage.getItem('kingtaxi_identifier') || undefined;
+
+    if (!token) {
+      setUser(null);
+      setIsLoading(false);
+      return;
     }
-    setIsLoading(false);
+
+    setUser({ token, isAdmin: false, identifier });
+
+    const bootstrap = async () => {
+      try {
+        await apiClient.getUsers();
+        localStorage.setItem('kingtaxi_is_admin', 'true');
+        setUser({ token, isAdmin: true, identifier });
+      } catch {
+        localStorage.setItem('kingtaxi_is_admin', 'false');
+        setUser({ token, isAdmin: false, identifier });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    bootstrap();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        const user: User = {
-          id: userData.id,
-          email: userData.email,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          accountType: userData.accountType.toLowerCase() as 'personal' | 'business',
-          isAdmin: userData.isAdmin || false,
-          isVerified: userData.isApproved,
-        };
-        setUser(user);
-        localStorage.setItem('kingtaxi_user', JSON.stringify(user));
-        setIsLoading(false);
-        return true;
-      } else {
-        const errorData = await response.json();
-        console.error('Login failed:', errorData.error);
-        
-        // If it's a database setup error, throw it so the UI can show the specific message
-        if (response.status === 503) {
-          throw new Error(errorData.error);
+      const result = await apiClient.login(email, password);
+      if (result?.access_token) {
+        localStorage.setItem('kingtaxi_token', result.access_token);
+        localStorage.setItem('kingtaxi_identifier', email);
+        try {
+          const key = profileStorageKey(email);
+          const raw = localStorage.getItem(key);
+          const parsed = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+          const legacyRaw = key !== 'kingtaxi_profile' ? localStorage.getItem('kingtaxi_profile') : null;
+          const legacyParsed = legacyRaw ? (JSON.parse(legacyRaw) as Record<string, unknown>) : {};
+          const looksLikeEmail = email.includes('@');
+          const firstNonEmpty = (...values: unknown[]) => {
+            for (const value of values) {
+              if (typeof value === 'string' && value.trim()) return value;
+            }
+            return '';
+          };
+          const next = {
+            ...legacyParsed,
+            ...parsed,
+            full_name: firstNonEmpty(
+              parsed.full_name,
+              legacyParsed.full_name,
+              parsed.name,
+              legacyParsed.name
+            ),
+            email: firstNonEmpty(parsed.email, legacyParsed.email, looksLikeEmail ? email : ''),
+            phone: firstNonEmpty(parsed.phone, legacyParsed.phone, looksLikeEmail ? '' : email),
+          };
+          localStorage.setItem(key, JSON.stringify(next));
+        } catch {}
+        let isAdmin = false;
+        try {
+          await apiClient.getUsers();
+          isAdmin = true;
+        } catch {
+          isAdmin = false;
         }
-        
-        setIsLoading(false);
-        return false;
+        localStorage.setItem('kingtaxi_is_admin', String(isAdmin));
+        setUser({ token: result.access_token, isAdmin, identifier: email });
+        return true;
       }
-    } catch (error) {
-      console.error('Login error:', error);
-      setIsLoading(false);
       return false;
+    } catch (error) {
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('kingtaxi_user');
+    localStorage.removeItem('kingtaxi_token');
+    localStorage.removeItem('kingtaxi_is_admin');
+    localStorage.removeItem('kingtaxi_identifier');
+    apiClient.logout().catch(() => {});
   };
 
   const value = {

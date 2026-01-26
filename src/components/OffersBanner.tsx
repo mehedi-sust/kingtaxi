@@ -4,48 +4,41 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Percent, Calendar, Clock } from 'lucide-react';
 import Link from 'next/link';
+import { apiClient } from '@/lib/api';
 
-interface Offer {
-  id: number;
+interface ApiOffer {
+  id: string | number;
   title: string;
   description: string;
   discount: number;
-  discountType: 'percentage' | 'fixed';
-  startDate: string;
-  endDate: string;
-  isActive: boolean;
+  discount_type: 'percentage' | 'fixed';
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
   category: string;
 }
 
 export default function OffersBanner() {
   const [currentOfferIndex, setCurrentOfferIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
+  const [offers, setOffers] = useState<ApiOffer[]>([]);
 
-  // Mock active offers - in real app, this would come from your API
-  const activeOffers: Offer[] = [
-    {
-      id: 1,
-      title: 'Summer Discount',
-      description: 'Get 15% off on all rides during summer season',
-      discount: 15,
-      discountType: 'percentage',
-      startDate: '2024-06-01',
-      endDate: '2024-08-31',
-      isActive: true,
-      category: 'seasonal'
-    },
-    {
-      id: 3,
-      title: 'New Customer Welcome',
-      description: '20% discount for first-time customers',
-      discount: 20,
-      discountType: 'percentage',
-      startDate: '2024-01-01',
-      endDate: '2024-12-31',
-      isActive: true,
-      category: 'welcome'
-    }
-  ];
+  useEffect(() => {
+    const fetchOffers = async () => {
+      try {
+        const data = await apiClient.getOffers();
+        setOffers(Array.isArray(data) ? (data as ApiOffer[]) : []);
+      } catch {
+        setOffers([]);
+      }
+    };
+    fetchOffers();
+  }, []);
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const activeOffers = offers.filter(
+    (o) => o.is_active && o.start_date <= todayStr && todayStr <= o.end_date
+  );
 
   // Auto-rotate offers every 5 seconds
   useEffect(() => {
@@ -58,7 +51,6 @@ export default function OffersBanner() {
     }
   }, [activeOffers.length]);
 
-  // Don't show banner if no active offers or user dismissed it
   if (activeOffers.length === 0 || !isVisible) {
     return null;
   }
@@ -120,9 +112,9 @@ export default function OffersBanner() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-4">
                         <div>
-                          <p className="font-bold text-lg">
+            <p className="font-bold text-lg">
                             {currentOffer.title} - {currentOffer.discount}
-                            {currentOffer.discountType === 'percentage' ? '%' : '£'} OFF
+                            {currentOffer.discount_type === 'percentage' ? '%' : '£'} OFF
                           </p>
                           <p className="text-red-100 text-sm">
                             {currentOffer.description}
@@ -132,8 +124,8 @@ export default function OffersBanner() {
                         {/* Validity */}
                         <div className="flex items-center text-red-100 text-sm">
                           <Calendar className="w-4 h-4 mr-1" />
-                          <span>Valid until {formatDate(currentOffer.endDate)}</span>
-                          {isOfferExpiringSoon(currentOffer.endDate) && (
+                          <span>Valid until {formatDate(currentOffer.end_date)}</span>
+                          {isOfferExpiringSoon(currentOffer.end_date) && (
                             <span className="ml-2 bg-yellow-500 text-yellow-900 px-2 py-1 rounded-full text-xs font-medium">
                               <Clock className="w-3 h-3 inline mr-1" />
                               Expires Soon!
@@ -194,14 +186,14 @@ export default function OffersBanner() {
                 >
                   <p className="font-bold text-lg mb-1">
                     {currentOffer.title} - {currentOffer.discount}
-                    {currentOffer.discountType === 'percentage' ? '%' : '£'} OFF
+                    {currentOffer.discount_type === 'percentage' ? '%' : '£'} OFF
                   </p>
                   <p className="text-red-100 text-sm mb-3">
                     {currentOffer.description}
                   </p>
                   <div className="flex items-center justify-center space-x-4">
                     <span className="text-red-100 text-xs">
-                      Valid until {formatDate(currentOffer.endDate)}
+                      Valid until {formatDate(currentOffer.end_date)}
                     </span>
                     <Link
                       href="/book"

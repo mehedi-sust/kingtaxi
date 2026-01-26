@@ -4,51 +4,29 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-console.log('🚀 Starting aggressive Vercel build process...');
+console.log('🚀 Starting King Taxi build process...');
 
 try {
-  // Step 1: Clean everything
+  // Step 1: Clean build artifacts
   console.log('🧹 Cleaning build artifacts...');
   const pathsToClean = [
     '.next',
-    'node_modules/.prisma',
     'node_modules/.cache'
   ];
   
   pathsToClean.forEach(cleanPath => {
     if (fs.existsSync(cleanPath)) {
-      fs.rmSync(cleanPath, { recursive: true, force: true });
+      fs.rmSync(cleanPath, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
       console.log(`✅ Cleaned ${cleanPath}`);
     }
   });
 
-  // Step 2: Force Prisma Client generation multiple times
-  console.log('📦 Force generating Prisma Client...');
-  
-  // First generation
-  execSync('npx prisma generate --no-engine', { 
-    stdio: 'inherit',
-    env: { ...process.env, PRISMA_GENERATE_DATAPROXY: 'true' }
-  });
-  console.log('✅ First Prisma Client generation completed');
-
-  // Second generation to ensure it's fresh
-  execSync('npx prisma generate', { stdio: 'inherit' });
-  console.log('✅ Second Prisma Client generation completed');
-
-  // Step 3: Verify Prisma Client exists
-  const prismaClientPath = path.join(__dirname, 'node_modules', '.prisma', 'client');
-  if (!fs.existsSync(prismaClientPath)) {
-    throw new Error('Prisma Client was not generated properly');
-  }
-  console.log('✅ Prisma Client verification passed');
-
-  // Step 4: Build Next.js application (without Turbopack)
+  // Step 2: Build Next.js application
   console.log('🏗️ Building Next.js application...');
-  execSync('next build', { stdio: 'inherit' });
+  execSync('node --no-deprecation ./node_modules/next/dist/bin/next build', { stdio: 'inherit' });
   console.log('✅ Next.js build completed successfully');
 
-  console.log('🎉 Aggressive Vercel build process completed successfully!');
+  console.log('🎉 Build process completed successfully!');
 } catch (error) {
   console.error('❌ Build failed:', error.message);
   process.exit(1);

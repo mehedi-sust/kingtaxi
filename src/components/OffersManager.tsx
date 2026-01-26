@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Plus, 
@@ -15,60 +15,25 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
+import { apiClient } from '@/lib/api';
 
 interface Offer {
-  id: number;
+  id: string | number;
   title: string;
   description: string;
   discount: number;
-  discountType: 'percentage' | 'fixed';
-  startDate: string;
-  endDate: string;
-  isActive: boolean;
-  createdAt: string;
+  discount_type: 'percentage' | 'fixed';
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  created_at?: string;
   category: string;
 }
 
 export default function OffersManager() {
-  const [offers, setOffers] = useState<Offer[]>([
-    {
-      id: 1,
-      title: 'Summer Discount',
-      description: 'Get 15% off on all rides during summer season',
-      discount: 15,
-      discountType: 'percentage',
-      startDate: '2024-06-01',
-      endDate: '2024-08-31',
-      isActive: true,
-      createdAt: '2024-05-15',
-      category: 'seasonal'
-    },
-    {
-      id: 2,
-      title: 'Christmas Holiday Offer',
-      description: '£5 off on airport transfers during Christmas holidays',
-      discount: 5,
-      discountType: 'fixed',
-      startDate: '2024-12-20',
-      endDate: '2024-01-05',
-      isActive: false,
-      createdAt: '2024-11-01',
-      category: 'holiday'
-    },
-    {
-      id: 3,
-      title: 'New Customer Welcome',
-      description: '20% discount for first-time customers',
-      discount: 20,
-      discountType: 'percentage',
-      startDate: '2024-01-01',
-      endDate: '2024-12-31',
-      isActive: true,
-      createdAt: '2024-01-01',
-      category: 'welcome'
-    }
-  ]);
-
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -77,11 +42,39 @@ export default function OffersManager() {
     title: '',
     description: '',
     discount: '',
-    discountType: 'percentage' as 'percentage' | 'fixed',
-    startDate: '',
-    endDate: '',
+    discount_type: 'percentage' as 'percentage' | 'fixed',
+    start_date: '',
+    end_date: '',
     category: 'general'
   });
+
+  useEffect(() => {
+    fetchOffers();
+  }, []);
+
+  const toOfferPayload = (offer: Partial<Offer>) => ({
+    title: offer.title,
+    description: offer.description,
+    discount: offer.discount,
+    discount_type: offer.discount_type,
+    start_date: offer.start_date,
+    end_date: offer.end_date,
+    is_active: offer.is_active,
+    category: offer.category,
+  });
+
+  const fetchOffers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await apiClient.getOffers();
+      setOffers(Array.isArray(data) ? (data as Offer[]) : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const predefinedOffers = [
     { title: 'Summer Discount', description: 'Seasonal summer offer', discount: 15, category: 'seasonal' },
@@ -100,23 +93,27 @@ export default function OffersManager() {
     }));
   };
 
-  const handleCreateOffer = () => {
-    const newOffer: Offer = {
-      id: Date.now(),
-      title: formData.title,
-      description: formData.description,
-      discount: parseFloat(formData.discount),
-      discountType: formData.discountType,
-      startDate: formData.startDate,
-      endDate: formData.endDate,
-      isActive: true,
-      createdAt: new Date().toISOString().split('T')[0],
-      category: formData.category
-    };
-
-    setOffers(prev => [...prev, newOffer]);
-    setShowCreateModal(false);
-    resetForm();
+  const handleCreateOffer = async () => {
+    try {
+      setError(null);
+      await apiClient.createOffer(
+        toOfferPayload({
+          title: formData.title,
+          description: formData.description,
+          discount: parseFloat(formData.discount),
+          discount_type: formData.discount_type,
+          start_date: formData.start_date,
+          end_date: formData.end_date,
+          is_active: true,
+          category: formData.category,
+        })
+      );
+      await fetchOffers();
+      setShowCreateModal(false);
+      resetForm();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create offer');
+    }
   };
 
   const handleEditOffer = (offer: Offer) => {
@@ -125,44 +122,65 @@ export default function OffersManager() {
       title: offer.title,
       description: offer.description,
       discount: offer.discount.toString(),
-      discountType: offer.discountType,
-      startDate: offer.startDate,
-      endDate: offer.endDate,
+      discount_type: offer.discount_type,
+      start_date: offer.start_date,
+      end_date: offer.end_date,
       category: offer.category
     });
     setShowCreateModal(true);
   };
 
-  const handleUpdateOffer = () => {
+  const handleUpdateOffer = async () => {
     if (!editingOffer) return;
 
-    const updatedOffer: Offer = {
-      ...editingOffer,
-      title: formData.title,
-      description: formData.description,
-      discount: parseFloat(formData.discount),
-      discountType: formData.discountType,
-      startDate: formData.startDate,
-      endDate: formData.endDate,
-      category: formData.category
-    };
-
-    setOffers(prev => prev.map(offer => 
-      offer.id === editingOffer.id ? updatedOffer : offer
-    ));
-    setShowCreateModal(false);
-    setEditingOffer(null);
-    resetForm();
+    try {
+      setError(null);
+      await apiClient.updateOffer(
+        String(editingOffer.id),
+        toOfferPayload({
+          title: formData.title,
+          description: formData.description,
+          discount: parseFloat(formData.discount),
+          discount_type: formData.discount_type,
+          start_date: formData.start_date,
+          end_date: formData.end_date,
+          is_active: editingOffer.is_active,
+          category: formData.category,
+        })
+      );
+      await fetchOffers();
+      setShowCreateModal(false);
+      setEditingOffer(null);
+      resetForm();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update offer');
+    }
   };
 
-  const toggleOfferStatus = (id: number) => {
-    setOffers(prev => prev.map(offer => 
-      offer.id === id ? { ...offer, isActive: !offer.isActive } : offer
-    ));
+  const toggleOfferStatus = async (id: string | number) => {
+    try {
+      setError(null);
+      const offer = offers.find(o => String(o.id) === String(id));
+      if (!offer) return;
+
+      await apiClient.updateOffer(
+        String(offer.id),
+        toOfferPayload({ ...offer, is_active: !offer.is_active })
+      );
+      await fetchOffers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to toggle offer status');
+    }
   };
 
-  const deleteOffer = (id: number) => {
-    setOffers(prev => prev.filter(offer => offer.id !== id));
+  const deleteOffer = async (id: string | number) => {
+    try {
+      setError(null);
+      await apiClient.deleteOffer(String(id));
+      await fetchOffers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete offer');
+    }
   };
 
 
@@ -171,9 +189,9 @@ export default function OffersManager() {
       title: '',
       description: '',
       discount: '',
-      discountType: 'percentage',
-      startDate: '',
-      endDate: '',
+      discount_type: 'percentage',
+      start_date: '',
+      end_date: '',
       category: 'general'
     });
   };
@@ -190,8 +208,29 @@ export default function OffersManager() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg">
+          {error}
+          <button 
+            onClick={() => setError(null)}
+            className="ml-2 text-red-500 hover:text-red-700"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+          <span className="ml-2 text-gray-600 dark:text-gray-300">Loading offers...</span>
+        </div>
+      ) : (
+        <>
+          {/* Header */}
+          <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Offers & Promotions</h2>
           <p className="text-gray-600 dark:text-gray-300 mt-1">Manage promotional offers and vacation banners</p>
@@ -212,11 +251,11 @@ export default function OffersManager() {
           <div className="text-sm text-gray-600 dark:text-gray-300">Total Offers</div>
         </div>
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="text-2xl font-bold text-green-600">{offers.filter(o => o.isActive).length}</div>
+          <div className="text-2xl font-bold text-green-600">{offers.filter(o => o.is_active).length}</div>
           <div className="text-sm text-gray-600 dark:text-gray-300">Active Offers</div>
         </div>
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="text-2xl font-bold text-yellow-600">{offers.filter(o => !o.isActive).length}</div>
+          <div className="text-2xl font-bold text-yellow-600">{offers.filter(o => !o.is_active).length}</div>
           <div className="text-sm text-gray-600 dark:text-gray-300">Inactive Offers</div>
         </div>
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -246,9 +285,9 @@ export default function OffersManager() {
               <div className="flex space-x-2">
                 <button
                   onClick={() => toggleOfferStatus(offer.id)}
-                  className={`p-1 rounded ${offer.isActive ? 'text-green-600' : 'text-gray-400'}`}
+                  className={`p-1 rounded ${offer.is_active ? 'text-green-600' : 'text-gray-400'}`}
                 >
-                  {offer.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                  {offer.is_active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                 </button>
                 <button
                   onClick={() => handleEditOffer(offer)}
@@ -270,23 +309,23 @@ export default function OffersManager() {
             <div className="space-y-2 mb-4">
               <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
                 <Percent className="w-4 h-4 mr-2" />
-                {offer.discount}{offer.discountType === 'percentage' ? '%' : '£'} discount
+                {offer.discount}{offer.discount_type === 'percentage' ? '%' : '£'} discount
               </div>
               <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
                 <Calendar className="w-4 h-4 mr-2" />
-                {offer.startDate} - {offer.endDate}
+                {offer.start_date} - {offer.end_date}
               </div>
             </div>
 
             <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-              offer.isActive 
+              offer.is_active 
                 ? 'bg-green-100 text-green-800' 
                 : 'bg-gray-100 text-gray-800'
             }`}>
               <div className={`w-2 h-2 rounded-full mr-2 ${
-                offer.isActive ? 'bg-green-500' : 'bg-gray-500'
+                offer.is_active ? 'bg-green-500' : 'bg-gray-500'
               }`}></div>
-              {offer.isActive ? 'Active' : 'Inactive'}
+              {offer.is_active ? 'Active' : 'Inactive'}
             </div>
           </motion.div>
         ))}
@@ -372,9 +411,9 @@ export default function OffersManager() {
                             title: predefined.title,
                             description: predefined.description,
                             discount: predefined.discount.toString(),
-                            discountType: 'percentage',
-                            startDate: new Date().toISOString().split('T')[0],
-                            endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                            discount_type: 'percentage',
+                            start_date: new Date().toISOString().split('T')[0],
+                            end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                             category: predefined.category
                           });
                         }}
@@ -443,8 +482,8 @@ export default function OffersManager() {
                       Discount Type *
                     </label>
                     <select
-                      name="discountType"
-                      value={formData.discountType}
+                      name="discount_type"
+                      value={formData.discount_type}
                       onChange={handleInputChange}
                       required
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 dark:text-white"
@@ -462,8 +501,8 @@ export default function OffersManager() {
                     </label>
                     <input
                       type="date"
-                      name="startDate"
-                      value={formData.startDate}
+                      name="start_date"
+                      value={formData.start_date}
                       onChange={handleInputChange}
                       required
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
@@ -476,8 +515,8 @@ export default function OffersManager() {
                     </label>
                     <input
                       type="date"
-                      name="endDate"
-                      value={formData.endDate}
+                      name="end_date"
+                      value={formData.end_date}
                       onChange={handleInputChange}
                       required
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
@@ -517,7 +556,7 @@ export default function OffersManager() {
                 </button>
                 <button
                   onClick={editingOffer ? handleUpdateOffer : handleCreateOffer}
-                  disabled={!formData.title || !formData.description || !formData.discount || !formData.startDate || !formData.endDate}
+                  disabled={!formData.title || !formData.description || !formData.discount || !formData.start_date || !formData.end_date}
                   className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors duration-200 flex items-center"
                 >
                   <Save className="w-4 h-4 mr-2" />
@@ -527,6 +566,8 @@ export default function OffersManager() {
             </div>
           </motion.div>
         </div>
+      )}
+        </>
       )}
     </div>
   );
