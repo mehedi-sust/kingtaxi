@@ -30,10 +30,9 @@ export default function DriverApplication() {
   const { user, isAuthenticated } = useAuth();
 
   const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
+    name: '',
     email: '',
-    mobile: '',
+    phone: '',
     address: '',
     date_of_birth: '',
     license_number: '',
@@ -53,35 +52,32 @@ export default function DriverApplication() {
     const identifier = user?.identifier ?? '';
     const looksLikeEmail = identifier.includes('@');
 
-    const splitFullName = (fullName: string) => {
-      const parts = fullName.trim().split(/\s+/).filter(Boolean);
-      const first = parts[0] || '';
-      const last = parts.slice(1).join(' ');
-      return { first, last };
-    };
-
     const applyPrefill = (account: any) => {
       if (cancelled) return;
+
+      const firstName = typeof account?.first_name === 'string' ? account.first_name : '';
+      const lastName = typeof account?.last_name === 'string' ? account.last_name : '';
+      const fullNameFromParts = [firstName, lastName].filter(Boolean).join(' ').trim();
 
       const fullName =
         (typeof account?.full_name === 'string' && account.full_name) ||
         (typeof account?.fullName === 'string' && account.fullName) ||
         (typeof account?.name === 'string' && account.name) ||
-        '';
+        (fullNameFromParts || '');
       const email =
         (typeof account?.email === 'string' && account.email) || (looksLikeEmail ? identifier : '');
       const phone =
         (typeof account?.phone === 'string' && account.phone) ||
+        (typeof account?.phone_number === 'string' && account.phone_number) ||
         (typeof account?.mobile === 'string' && account.mobile) ||
+        (typeof account?.mobile_number === 'string' && account.mobile_number) ||
         (!looksLikeEmail ? identifier : '');
-      const names = fullName ? splitFullName(fullName) : { first: '', last: '' };
 
       setFormData((prev) => ({
         ...prev,
-        first_name: prev.first_name || names.first,
-        last_name: prev.last_name || names.last,
+        name: prev.name || (typeof fullName === 'string' ? fullName : ''),
         email: prev.email || email,
-        mobile: prev.mobile || phone,
+        phone: prev.phone || phone,
       }));
     };
 
@@ -112,7 +108,14 @@ export default function DriverApplication() {
     setIsLoading(true);
 
     try {
-      await apiClient.createDriver(formData);
+      const payload = {
+        name: String(formData.name || '').trim(),
+        phone: String(formData.phone || '').trim(),
+        email: String(formData.email || '').trim(),
+        license_number: String(formData.license_number || '').trim(),
+      };
+
+      await apiClient.createDriverApplication(payload);
       setSubmitted(true);
     } catch (error) {
       console.error('Driver application error:', error);
@@ -282,43 +285,22 @@ export default function DriverApplication() {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        First Name *
-                      </label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                        <input
-                          type="text"
-                          id="firstName"
-                          name="firstName"
-                          value={formData.first_name}
-                          onChange={(e) => setFormData(prev => ({ ...prev, first_name: e.target.value }))}
-                          required
-                          className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
-                          placeholder="Enter your first name"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Last Name *
-                      </label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                        <input
-                          type="text"
-                          id="lastName"
-                          name="lastName"
-                          value={formData.last_name}
-                          onChange={(e) => setFormData(prev => ({ ...prev, last_name: e.target.value }))}
-                          required
-                          className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
-                          placeholder="Enter your last name"
-                        />
-                      </div>
+                  <div>
+                    <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Full Name *
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                      <input
+                        type="text"
+                        id="fullName"
+                        name="fullName"
+                        value={formData.name}
+                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                        required
+                        className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
+                        placeholder="Enter your full name"
+                      />
                     </div>
                   </div>
 
@@ -343,17 +325,17 @@ export default function DriverApplication() {
                     </div>
 
                     <div>
-                      <label htmlFor="mobile" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Mobile Number *
                       </label>
                       <div className="relative">
                         <Phone className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
                         <input
                           type="tel"
-                          id="mobile"
-                          name="mobile"
-                          value={formData.mobile}
-                          onChange={(e) => setFormData(prev => ({ ...prev, mobile: e.target.value }))}
+                          id="phone"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                           required
                           className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                           placeholder="Enter your mobile number"

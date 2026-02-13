@@ -304,7 +304,7 @@ export default function Services() {
                   whileHover={{ scale: 1.02 }}
                   className="relative"
                 >
-                  <Card className="bg-gradient-to-br from-red-600 to-red-700 text-white p-10 shadow-2xl border-0">
+                  <Card className="relative overflow-hidden bg-gradient-to-br from-red-600 to-red-700 text-white p-10 shadow-2xl border-0">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
                     <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-12 -translate-x-12"></div>
                     <div className="relative z-10">

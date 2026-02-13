@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
 import apiClient from '@/lib/api';
 
 interface User {
@@ -9,10 +9,19 @@ interface User {
   identifier?: string;
 }
 
+const loginAtStorageKey = 'kingtaxi_login_at';
+
 function profileStorageKey(identifier: string | undefined) {
   const raw = (identifier || '').trim().toLowerCase();
   const safe = raw.replace(/[^a-z0-9_-]/gi, '_');
   return safe ? `kingtaxi_profile_${safe}` : 'kingtaxi_profile';
+}
+
+function getAutoLogoutMs() {
+  const raw = process.env.NEXT_PUBLIC_AUTH_TOKEN_TTL_MINUTES;
+  const minutes = raw ? Number(raw) : 0;
+  if (!Number.isFinite(minutes) || minutes <= 0) return 0;
+  return minutes * 60 * 1000;
 }
 
 interface AuthContextType {
@@ -28,6 +37,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const logout = useCallback(() => {
+    setUser(null);
+    localStorage.removeItem('kingtaxi_token');
+    localStorage.removeItem('kingtaxi_is_admin');
+    localStorage.removeItem('kingtaxi_identifier');
+    localStorage.removeItem(loginAtStorageKey);
+    apiClient.logout().catch(() => {});
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem('kingtaxi_token');
@@ -57,6 +75,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     bootstrap();
   }, []);
 
+  useEffect(() => {
+    if (!user?.token) return;
+
+    const ttlMs = getAutoLogoutMs();
+    if (!ttlMs) return;
+
+    let loginAt = Number(localStorage.getItem(loginAtStorageKey) || 0);
+    if (!loginAt || !Number.isFinite(loginAt)) {
+      loginAt = Date.now();
+      localStorage.setItem(loginAtStorageKey, String(loginAt));
+    }
+
+    const expiresAt = loginAt + ttlMs;
+    const remainingMs = expiresAt - Date.now();
+
+    if (remainingMs <= 0) {
+      logout();
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => logout(), remainingMs);
+    return () => window.clearTimeout(timeoutId);
+  }, [logout, user?.token]);
+
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
@@ -65,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (result?.access_token) {
         localStorage.setItem('kingtaxi_token', result.access_token);
         localStorage.setItem('kingtaxi_identifier', email);
+        localStorage.setItem(loginAtStorageKey, String(Date.now()));
         try {
           const key = profileStorageKey(email);
           const raw = localStorage.getItem(key);
@@ -109,14 +152,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('kingtaxi_token');
-    localStorage.removeItem('kingtaxi_is_admin');
-    localStorage.removeItem('kingtaxi_identifier');
-    apiClient.logout().catch(() => {});
   };
 
   const value = {

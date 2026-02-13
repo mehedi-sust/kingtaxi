@@ -45,8 +45,8 @@ export default function Navbar() {
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
         scrolled 
-          ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl shadow-2xl border-b border-gray-200/20 dark:border-gray-700/20' 
-          : 'bg-white/80 dark:bg-gray-900/80 backdrop-blur-md'
+          ? 'bg-white dark:bg-gray-900 shadow-2xl border-b border-gray-200/20 dark:border-gray-700/20' 
+          : 'bg-white dark:bg-gray-900'
       }`}
     >
       <div className="relative">

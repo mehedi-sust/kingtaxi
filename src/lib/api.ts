@@ -392,6 +392,13 @@ class ApiClient {
     });
   }
 
+  async createDriverApplication(applicationData: any) {
+    return this.request('/drivers/applications', {
+      method: 'POST',
+      body: JSON.stringify(applicationData),
+    });
+  }
+
   async updateDriver(driverId: string, driverData: any) {
     const id = encodeURIComponent(driverId);
     const isApproved =

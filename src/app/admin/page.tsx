@@ -35,8 +35,9 @@ interface User {
 
 interface Driver {
   id: string;
-  first_name: string;
-  last_name: string;
+  full_name?: string;
+  first_name?: string;
+  last_name?: string;
   email: string;
   experience: string;
   is_approved: boolean;
@@ -119,6 +120,13 @@ export default function AdminDashboard() {
         typeof input?.current_lat === 'number' ||
         typeof input?.current_lng === 'number';
 
+      const splitFullName = (fullName: string) => {
+        const parts = fullName.trim().split(/\s+/).filter(Boolean);
+        const first = parts[0] || '';
+        const last = parts.slice(1).join(' ');
+        return { first, last };
+      };
+
       const normalizeDriverName = (input: any) =>
         (typeof input?.name === 'string' && input.name.trim()) ||
         [input?.first_name, input?.last_name].filter(Boolean).join(' ').trim() ||
@@ -129,16 +137,26 @@ export default function AdminDashboard() {
 
       const nextDriverApplications = (rawDrivers as any[])
         .filter((d) => d && typeof d === 'object' && !isDriverRecord(d))
-        .map((d) => ({
-          id: String(d.id ?? ''),
-          first_name: String(d.first_name ?? ''),
-          last_name: String(d.last_name ?? ''),
-          email: String(d.email ?? ''),
-          experience: String(d.experience ?? ''),
-          is_approved: Boolean(d.is_approved),
-          created_at: String(d.created_at ?? ''),
-          message: typeof d.message === 'string' ? d.message : undefined,
-        }));
+        .map((d) => {
+          const fullName =
+            (typeof d.full_name === 'string' && d.full_name.trim()) ||
+            (typeof d.fullName === 'string' && d.fullName.trim()) ||
+            (typeof d.name === 'string' && d.name.trim()) ||
+            [d.first_name, d.last_name].filter(Boolean).join(' ').trim();
+          const names = fullName ? splitFullName(fullName) : { first: '', last: '' };
+
+          return {
+            id: String(d.id ?? ''),
+            full_name: fullName || undefined,
+            first_name: String(d.first_name ?? names.first ?? ''),
+            last_name: String(d.last_name ?? names.last ?? ''),
+            email: String(d.email ?? ''),
+            experience: String(d.experience ?? ''),
+            is_approved: Boolean(d.is_approved),
+            created_at: String(d.created_at ?? ''),
+            message: typeof d.message === 'string' ? d.message : undefined,
+          };
+        });
 
       const nextDrivers = (rawDrivers as any[])
         .filter((d) => d && typeof d === 'object' && isDriverRecord(d))
@@ -313,7 +331,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20 relative overflow-hidden isolate">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <motion.div
@@ -390,7 +408,7 @@ export default function AdminDashboard() {
                 <div className="p-6">
                   <div className="space-y-4">
                     {users.slice(0, 3).map((user) => (
-                      <div key={user.id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/40 rounded-lg p-3">
+                      <div key={user.id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
                         <div>
                           <p className="font-medium text-gray-900 dark:text-white">{user.full_name || user.phone}</p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">{user.email || user.phone}</p>
@@ -415,9 +433,11 @@ export default function AdminDashboard() {
                 <div className="p-6">
                   <div className="space-y-4">
                     {driverApplications.slice(0, 3).map((driver) => (
-                      <div key={driver.id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/40 rounded-lg p-3">
+                      <div key={driver.id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{driver.first_name} {driver.last_name}</p>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {driver.full_name || `${driver.first_name || ''} ${driver.last_name || ''}`.trim()}
+                          </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">{driver.experience} experience</p>
                         </div>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -586,7 +606,9 @@ export default function AdminDashboard() {
                       <tr key={driver.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">{driver.first_name} {driver.last_name}</div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">
+                              {driver.full_name || `${driver.first_name || ''} ${driver.last_name || ''}`.trim()}
+                            </div>
                             <div className="text-sm text-gray-500 dark:text-gray-400">{driver.email}</div>
                           </div>
                         </td>
