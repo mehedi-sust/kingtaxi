@@ -39,8 +39,10 @@ interface Driver {
   first_name?: string;
   last_name?: string;
   email: string;
-  experience: string;
+  phone?: string;
+  license_number?: string;
   is_approved: boolean;
+  status?: string;
   created_at: string;
   message?: string;
 }
@@ -49,6 +51,20 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
+  const [showDriverModal, setShowDriverModal] = useState(false);
+  const [showDriverMgmtModal, setShowDriverMgmtModal] = useState(false);
+  const [driverMgmtMode, setDriverMgmtMode] = useState<'create' | 'edit'>('create');
+  const [driverMgmtForm, setDriverMgmtForm] = useState({
+    id: '',
+    name: '',
+    phone: '',
+    vehicle_plate: '',
+    vehicle_model: '',
+    status: 'offline',
+  });
+  const [driverMgmtError, setDriverMgmtError] = useState<string | null>(null);
+  const [driverMgmtSaving, setDriverMgmtSaving] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [driverApplications, setDriverApplications] = useState<Driver[]>([]);
   const [drivers, setDrivers] = useState<Array<{
@@ -92,13 +108,24 @@ export default function AdminDashboard() {
     }
   }, [isAuthenticated, isLoading, router, user]);
 
+  useEffect(() => {
+    const isModalOpen = showUserModal || showDriverModal || showDriverMgmtModal;
+    if (!isModalOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [showUserModal, showDriverModal, showDriverMgmtModal]);
+
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [usersData, driversData, offersData] = await Promise.all([
+      const [usersData, driverApplicationsData, driversData, offersData] = await Promise.all([
         apiClient.getUsers().catch(() => []),
+        apiClient.getAdminDriverApplications().catch(() => []),
         apiClient.getDrivers().catch(() => []),
-        apiClient.getOffers().catch(() => []),
+        apiClient.getAdminOffersAll().catch(() => apiClient.getOffers().catch(() => [])),
       ]);
 
       const activeOffers = Array.isArray(offersData)
@@ -118,7 +145,9 @@ export default function AdminDashboard() {
         typeof input?.vehicle_model === 'string' ||
         typeof input?.status === 'string' ||
         typeof input?.current_lat === 'number' ||
-        typeof input?.current_lng === 'number';
+        typeof input?.current_lng === 'number' ||
+        typeof input?.user_id === 'string' ||
+        (typeof input?.name === 'string' && typeof input?.phone === 'string');
 
       const splitFullName = (fullName: string) => {
         const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -135,8 +164,18 @@ export default function AdminDashboard() {
         (typeof input?.phone === 'string' && input.phone.trim()) ||
         String(input?.id ?? '');
 
-      const nextDriverApplications = (rawDrivers as any[])
-        .filter((d) => d && typeof d === 'object' && !isDriverRecord(d))
+      const rawApplications = Array.isArray(driverApplicationsData)
+        ? driverApplicationsData
+        : Array.isArray((driverApplicationsData as any)?.applications)
+        ? (driverApplicationsData as any).applications
+        : Array.isArray((driverApplicationsData as any)?.data)
+        ? (driverApplicationsData as any).data
+        : driverApplicationsData
+        ? [driverApplicationsData]
+        : [];
+
+      const nextDriverApplications = (rawApplications as any[])
+        .filter((d) => d && typeof d === 'object')
         .map((d) => {
           const fullName =
             (typeof d.full_name === 'string' && d.full_name.trim()) ||
@@ -144,15 +183,31 @@ export default function AdminDashboard() {
             (typeof d.name === 'string' && d.name.trim()) ||
             [d.first_name, d.last_name].filter(Boolean).join(' ').trim();
           const names = fullName ? splitFullName(fullName) : { first: '', last: '' };
+          const status = typeof d.status === 'string' ? d.status : undefined;
+          const normalizedStatus = status ? status.trim().toLowerCase() : '';
+          const isApproved =
+            typeof d.is_approved === 'boolean'
+              ? Boolean(d.is_approved)
+              : normalizedStatus === 'approved' || normalizedStatus === 'accepted' || normalizedStatus === 'active';
+          const licenseNumber =
+            (typeof d.license_number === 'string' && d.license_number.trim()) ||
+            (typeof d.licenseNumber === 'string' && d.licenseNumber.trim()) ||
+            '';
+          const phone =
+            (typeof d.phone === 'string' && d.phone.trim()) ||
+            (typeof d.mobile === 'string' && d.mobile.trim()) ||
+            '';
 
           return {
             id: String(d.id ?? ''),
             full_name: fullName || undefined,
             first_name: String(d.first_name ?? names.first ?? ''),
             last_name: String(d.last_name ?? names.last ?? ''),
-            email: String(d.email ?? ''),
-            experience: String(d.experience ?? ''),
-            is_approved: Boolean(d.is_approved),
+            email: typeof d.email === 'string' ? d.email : '',
+            phone,
+            license_number: licenseNumber,
+            is_approved: isApproved,
+            status,
             created_at: String(d.created_at ?? ''),
             message: typeof d.message === 'string' ? d.message : undefined,
           };
@@ -271,10 +326,15 @@ export default function AdminDashboard() {
     { id: 'bookings', name: 'Booking Management', icon: Calendar },
     { id: 'offers', name: 'Offers & Promotions', icon: Calendar },
   ];
+  const driverStatusOptions = ['active', 'busy', 'offline', 'suspended', 'terminated', 'on_hold'];
 
   const handleUserActiveChange = async (userId: string, is_active: boolean) => {
     try {
-      await apiClient.updateUser(userId, { is_active });
+      if (is_active) {
+        await apiClient.activateUser(userId);
+      } else {
+        await apiClient.deactivateUser(userId);
+      }
       
       // Update local state
       setUsers((prev) => prev.map((user) => (user.id === userId ? { ...user, is_active } : user)));
@@ -287,15 +347,92 @@ export default function AdminDashboard() {
     try {
       if (action === 'approve' || action === 'reject') {
         const is_approved = action === 'approve';
-        await apiClient.updateDriver(driverId, { is_approved });
+        await apiClient.updateDriverApplicationStatus(driverId, action);
+        const nextStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
         
         // Update local state
         setDriverApplications((prev) =>
-          prev.map((driver) => (driver.id === driverId ? { ...driver, is_approved } : driver))
+          prev.map((driver) =>
+            driver.id === driverId
+              ? { ...driver, is_approved, status: nextStatus }
+              : driver
+          )
         );
+        setSelectedDriver((prev) =>
+          prev && prev.id === driverId ? { ...prev, is_approved, status: nextStatus } : prev
+        );
+        if (action === 'approve') {
+          fetchData();
+        }
       }
     } catch (error) {
       console.error('Error updating driver:', error);
+    }
+  };
+
+  const openCreateDriver = () => {
+    setDriverMgmtMode('create');
+    setDriverMgmtForm({
+      id: '',
+      name: '',
+      phone: '',
+      vehicle_plate: '',
+      vehicle_model: '',
+      status: 'offline',
+    });
+    setDriverMgmtError(null);
+    setShowDriverMgmtModal(true);
+  };
+
+  const openEditDriver = (driver: { id: string; name: string; phone: string; vehicle_plate?: string; vehicle_model?: string; status?: string }) => {
+    setDriverMgmtMode('edit');
+    setDriverMgmtForm({
+      id: driver.id,
+      name: driver.name || '',
+      phone: driver.phone || '',
+      vehicle_plate: driver.vehicle_plate || '',
+      vehicle_model: driver.vehicle_model || '',
+      status: driver.status || 'offline',
+    });
+    setDriverMgmtError(null);
+    setShowDriverMgmtModal(true);
+  };
+
+  const handleDriverMgmtSave = async () => {
+    try {
+      setDriverMgmtSaving(true);
+      setDriverMgmtError(null);
+      const payload = {
+        name: driverMgmtForm.name.trim(),
+        phone: driverMgmtForm.phone.trim(),
+        vehicle_plate: driverMgmtForm.vehicle_plate.trim(),
+        vehicle_model: driverMgmtForm.vehicle_model.trim() || null,
+        status: driverMgmtForm.status,
+      };
+
+      if (driverMgmtMode === 'create') {
+        await apiClient.createDriver(payload);
+      } else {
+        await apiClient.updateDriver(driverMgmtForm.id, payload);
+      }
+
+      setShowDriverMgmtModal(false);
+      fetchData();
+    } catch (error) {
+      setDriverMgmtError(error instanceof Error ? error.message : 'Failed to save driver');
+    } finally {
+      setDriverMgmtSaving(false);
+    }
+  };
+
+  const handleDriverDelete = async (driverId: string) => {
+    const confirmed = window.confirm('Delete this driver? This action cannot be undone.');
+    if (!confirmed) return;
+    try {
+      await apiClient.deleteDriver(driverId);
+      setDrivers((prev) => prev.filter((driver) => driver.id !== driverId));
+    } catch (error) {
+      console.error('Error deleting driver:', error);
     }
   };
 
@@ -438,7 +575,9 @@ export default function AdminDashboard() {
                           <p className="font-medium text-gray-900 dark:text-white">
                             {driver.full_name || `${driver.first_name || ''} ${driver.last_name || ''}`.trim()}
                           </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{driver.experience} experience</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {driver.license_number || driver.phone || '—'}
+                          </p>
                         </div>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                           driver.is_approved 
@@ -594,10 +733,11 @@ export default function AdminDashboard() {
                 <table className="w-full">
                   <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Driver</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Experience</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Availability</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Applicant</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Phone</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">License</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Submitted</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
@@ -613,44 +753,65 @@ export default function AdminDashboard() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {driver.experience}
+                          {driver.phone || '—'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          —
+                          {driver.license_number || '—'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            driver.is_approved 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                          }`}>
-                            {driver.is_approved ? 'Approved' : 'Pending'}
-                          </span>
+                          {(() => {
+                            const statusValue = String(driver.status ?? (driver.is_approved ? 'APPROVED' : 'PENDING'));
+                            const normalized = statusValue.trim().toLowerCase();
+                            const isApproved = normalized === 'approved';
+                            const isRejected = normalized === 'rejected';
+                            const badgeClass = isApproved
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                              : isRejected
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+                            return (
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${badgeClass}`}>
+                                {statusValue}
+                              </span>
+                            );
+                          })()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {driver.created_at ? new Date(driver.created_at).toLocaleDateString() : '—'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
-                            {!driver.is_approved && (
-                              <>
-                                <button 
-                                  onClick={() => handleDriverAction(driver.id, 'approve')}
-                                  className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
-                                >
-                                  <CheckCircle className="w-4 h-4" />
-                                </button>
-                                <button 
-                                  onClick={() => handleDriverAction(driver.id, 'review')}
-                                  className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </button>
-                                <button 
-                                  onClick={() => handleDriverAction(driver.id, 'reject')}
-                                  className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                                >
-                                  <XCircle className="w-4 h-4" />
-                                </button>
-                              </>
-                            )}
+                            <button
+                              onClick={() => {
+                                setSelectedDriver(driver);
+                                setShowDriverModal(true);
+                              }}
+                              className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            {(() => {
+                              const normalized = String(driver.status ?? '').trim().toLowerCase();
+                              const isApproved = normalized === 'approved';
+                              const isRejected = normalized === 'rejected';
+                              if (isApproved || isRejected) return null;
+                              return (
+                                <>
+                                  <button
+                                    onClick={() => handleDriverAction(driver.id, 'approve')}
+                                    className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                                  >
+                                    <CheckCircle className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDriverAction(driver.id, 'reject')}
+                                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                  </button>
+                                </>
+                              );
+                            })()}
                           </div>
                         </td>
                       </tr>
@@ -710,8 +871,14 @@ export default function AdminDashboard() {
             transition={{ duration: 0.5 }}
           >
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-              <div className="p-6 border-b border-gray-100 dark:border-gray-700">
+              <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Drivers</h3>
+                <button
+                  onClick={openCreateDriver}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+                >
+                  Add Driver
+                </button>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -722,6 +889,7 @@ export default function AdminDashboard() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Vehicle</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -742,12 +910,48 @@ export default function AdminDashboard() {
                           {[driver.vehicle_model, driver.vehicle_plate].filter(Boolean).join(' • ') || '—'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-                            {driver.status || 'UNKNOWN'}
-                          </span>
+                          {(() => {
+                            const statusValue = String(driver.status ?? 'UNKNOWN');
+                            const normalized = statusValue.trim().toLowerCase();
+                            const badgeClass =
+                              normalized === 'active'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                : normalized === 'busy'
+                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                : normalized === 'offline'
+                                ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                                : normalized === 'suspended'
+                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                : normalized === 'terminated'
+                                ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                : normalized === 'on_hold'
+                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+                            return (
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${badgeClass}`}>
+                                {statusValue}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                           {driver.created_at ? new Date(driver.created_at).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => openEditDriver(driver)}
+                              className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDriverDelete(driver.id)}
+                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                            >
+                              <XCircle className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -904,6 +1108,173 @@ export default function AdminDashboard() {
                   </button>
                 )}
               </div>
+            </motion.div>
+          </div>
+        )}
+        {showDriverMgmtModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {driverMgmtMode === 'create' ? 'Add Driver' : 'Driver Details'}
+                </h3>
+                <button
+                  onClick={() => setShowDriverMgmtModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</label>
+                  <input
+                    value={driverMgmtForm.name}
+                    onChange={(e) => setDriverMgmtForm((prev) => ({ ...prev, name: e.target.value }))}
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Phone</label>
+                  <input
+                    value={driverMgmtForm.phone}
+                    onChange={(e) => setDriverMgmtForm((prev) => ({ ...prev, phone: e.target.value }))}
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Vehicle Plate</label>
+                  <input
+                    value={driverMgmtForm.vehicle_plate}
+                    onChange={(e) => setDriverMgmtForm((prev) => ({ ...prev, vehicle_plate: e.target.value.toUpperCase() }))}
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Vehicle Model</label>
+                  <input
+                    value={driverMgmtForm.vehicle_model}
+                    onChange={(e) => setDriverMgmtForm((prev) => ({ ...prev, vehicle_model: e.target.value }))}
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
+                  <select
+                    value={driverMgmtForm.status}
+                    onChange={(e) => setDriverMgmtForm((prev) => ({ ...prev, status: e.target.value }))}
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
+                  >
+                    {driverStatusOptions.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {driverMgmtError && (
+                  <div className="text-sm text-red-600 dark:text-red-400">{driverMgmtError}</div>
+                )}
+              </div>
+              <div className="flex space-x-3 mt-6">
+                <button
+                  onClick={handleDriverMgmtSave}
+                  disabled={driverMgmtSaving}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {driverMgmtSaving ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+        {showDriverModal && selectedDriver && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Driver Application</h3>
+                <button
+                  onClick={() => setShowDriverModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</label>
+                  <p className="text-gray-900 dark:text-white">
+                    {selectedDriver.full_name ||
+                      `${selectedDriver.first_name || ''} ${selectedDriver.last_name || ''}`.trim() ||
+                      '—'}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Phone</label>
+                  <p className="text-gray-900 dark:text-white">{selectedDriver.phone || '—'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</label>
+                  <p className="text-gray-900 dark:text-white">{selectedDriver.email || '—'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">License Number</label>
+                  <p className="text-gray-900 dark:text-white">{selectedDriver.license_number || '—'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
+                  <p className="text-gray-900 dark:text-white">
+                    {String(selectedDriver.status ?? (selectedDriver.is_approved ? 'APPROVED' : 'PENDING'))}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Submitted</label>
+                  <p className="text-gray-900 dark:text-white">
+                    {selectedDriver.created_at ? new Date(selectedDriver.created_at).toLocaleString() : '—'}
+                  </p>
+                </div>
+                {selectedDriver.message && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Message</label>
+                    <p className="text-gray-900 dark:text-white">{selectedDriver.message}</p>
+                  </div>
+                )}
+              </div>
+              {(() => {
+                const normalized = String(selectedDriver.status ?? '').trim().toLowerCase();
+                const isApproved = normalized === 'approved';
+                const isRejected = normalized === 'rejected';
+                if (isApproved || isRejected) return null;
+                return (
+                  <div className="flex space-x-3 mt-6">
+                    <button
+                      onClick={() => handleDriverAction(selectedDriver.id, 'approve')}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => handleDriverAction(selectedDriver.id, 'reject')}
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                );
+              })()}
             </motion.div>
           </div>
         )}

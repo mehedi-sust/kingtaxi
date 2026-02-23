@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Plus, 
@@ -28,6 +28,7 @@ interface Offer {
   is_active: boolean;
   created_at?: string;
   category: string;
+  code?: string | null;
 }
 
 export default function OffersManager() {
@@ -45,36 +46,80 @@ export default function OffersManager() {
     discount_type: 'percentage' as 'percentage' | 'fixed',
     start_date: '',
     end_date: '',
-    category: 'general'
+    category: 'general',
+    code: ''
   });
 
   useEffect(() => {
-    fetchOffers();
-  }, []);
+    if (!showCreateModal) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [showCreateModal]);
+
+  const toDateTime = (value?: string | null) => {
+    if (!value) return null;
+    const text = String(value);
+    if (text.includes('T')) return text;
+    const parsed = new Date(text);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed.toISOString();
+  };
 
   const toOfferPayload = (offer: Partial<Offer>) => ({
     title: offer.title,
-    description: offer.description,
-    discount: offer.discount,
-    discount_type: offer.discount_type,
-    start_date: offer.start_date,
-    end_date: offer.end_date,
+    description: offer.description || null,
+    code: offer.code || null,
+    discount_percent: typeof offer.discount === 'number' ? offer.discount : null,
     is_active: offer.is_active,
-    category: offer.category,
+    valid_from: toDateTime(offer.start_date),
+    valid_until: toDateTime(offer.end_date),
   });
 
-  const fetchOffers = async () => {
+  const fetchOffers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await apiClient.getOffers();
-      setOffers(Array.isArray(data) ? (data as Offer[]) : []);
+      const data = await apiClient.getAdminOffersAll().catch(() => apiClient.getOffers());
+      const normalizeDateInput = (value?: string | null) => {
+        if (!value) return '';
+        const text = String(value);
+        return text.includes('T') ? text.split('T')[0] : text;
+      };
+      const normalizeOffer = (raw: any): Offer => {
+        const discountValue =
+          typeof raw?.discount_percent === 'number'
+            ? raw.discount_percent
+            : typeof raw?.discount === 'number'
+            ? raw.discount
+            : 0;
+        return {
+          id: raw?.id ?? '',
+          title: raw?.title ?? '',
+          description: raw?.description ?? '',
+          discount: discountValue,
+          discount_type: raw?.discount_type === 'fixed' ? 'fixed' : 'percentage',
+          start_date: normalizeDateInput(raw?.valid_from ?? raw?.start_date ?? raw?.startDate),
+          end_date: normalizeDateInput(raw?.valid_until ?? raw?.end_date ?? raw?.endDate),
+          is_active: typeof raw?.is_active === 'boolean' ? raw.is_active : true,
+          created_at: raw?.created_at,
+          category: raw?.category ?? 'general',
+          code: raw?.code ?? null,
+        };
+      };
+      setOffers(Array.isArray(data) ? data.map(normalizeOffer) : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchOffers();
+  }, [fetchOffers]);
 
   const predefinedOffers = [
     { title: 'Summer Discount', description: 'Seasonal summer offer', discount: 15, category: 'seasonal' },
@@ -106,6 +151,7 @@ export default function OffersManager() {
           end_date: formData.end_date,
           is_active: true,
           category: formData.category,
+          code: formData.code,
         })
       );
       await fetchOffers();
@@ -125,7 +171,8 @@ export default function OffersManager() {
       discount_type: offer.discount_type,
       start_date: offer.start_date,
       end_date: offer.end_date,
-      category: offer.category
+      category: offer.category,
+      code: offer.code || ''
     });
     setShowCreateModal(true);
   };
@@ -146,6 +193,7 @@ export default function OffersManager() {
           end_date: formData.end_date,
           is_active: editingOffer.is_active,
           category: formData.category,
+          code: formData.code,
         })
       );
       await fetchOffers();
@@ -192,7 +240,8 @@ export default function OffersManager() {
       discount_type: 'percentage',
       start_date: '',
       end_date: '',
-      category: 'general'
+      category: 'general',
+      code: ''
     });
   };
 
@@ -309,7 +358,7 @@ export default function OffersManager() {
             <div className="space-y-2 mb-4">
               <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
                 <Percent className="w-4 h-4 mr-2" />
-                {offer.discount}{offer.discount_type === 'percentage' ? '%' : '£'} discount
+                {offer.discount}% discount
               </div>
               <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
                 <Calendar className="w-4 h-4 mr-2" />
@@ -414,7 +463,8 @@ export default function OffersManager() {
                             discount_type: 'percentage',
                             start_date: new Date().toISOString().split('T')[0],
                             end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                            category: predefined.category
+                            category: predefined.category,
+                            code: ''
                           });
                         }}
                         className="text-left p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900 transition-colors duration-200"
@@ -462,7 +512,7 @@ export default function OffersManager() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Discount Amount *
+                      Discount Percent *
                     </label>
                     <input
                       type="number"
@@ -489,7 +539,6 @@ export default function OffersManager() {
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 dark:text-white"
                     >
                       <option value="percentage">Percentage (%)</option>
-                      <option value="fixed">Fixed Amount (£)</option>
                     </select>
                   </div>
                 </div>

@@ -45,6 +45,15 @@ export default function FareManager() {
     fetchFares();
   }, []);
 
+  useEffect(() => {
+    if (!showModal) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [showModal]);
+
   const fetchFares = async () => {
     try {
       const data = await apiClient.getFares();

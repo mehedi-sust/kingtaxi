@@ -53,6 +53,15 @@ export default function VehicleManager() {
     fetchVehicles();
   }, []);
 
+  useEffect(() => {
+    if (!showModal) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [showModal]);
+
   const fetchVehicles = async () => {
     try {
       const data = await apiClient.getVehicles();

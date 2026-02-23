@@ -17,11 +17,13 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiClient } from '@/lib/api';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
+  const [driverAccepted, setDriverAccepted] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -32,12 +34,40 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    if (!isAuthenticated || user?.isAdmin) return;
+
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const app = await apiClient.getMyDriverApplication();
+        if (cancelled) return;
+        const status = String((app as any)?.status ?? '').trim().toLowerCase();
+        const accepted =
+          (app as any)?.is_approved === true || status === 'approved' || status === 'accepted' || status === 'active';
+        setDriverAccepted(Boolean(accepted));
+      } catch {
+        if (cancelled) return;
+        setDriverAccepted(false);
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, user?.isAdmin]);
+
+  const showDriverDashboard = isAuthenticated && !user?.isAdmin && driverAccepted;
+
   const navItems = [
     { name: 'Home', href: '/' },
     { name: 'Book Now', href: '/book' },
     { name: 'About Us', href: '/about' },
     { name: 'Picture Gallery', href: '/gallery' },
-    { name: 'Join Our Driving Team', href: '/driver-application' },
+    ...(showDriverDashboard
+      ? [{ name: 'Driver Dashboard', href: '/driver-dashboard' }]
+      : [{ name: 'Join Our Driving Team', href: '/driver-application' }]),
     ...(user?.isAdmin ? [{ name: 'Admin', href: '/admin' }] : []),
   ];
 

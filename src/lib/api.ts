@@ -118,6 +118,16 @@ class ApiClient {
           throw new Error(errorMessage);
         }
 
+        if (response.status === 204) {
+          return null as T;
+        }
+
+        const contentTypeOk = contentType && contentType.includes('application/json');
+        if (!contentTypeOk) {
+          const text = await response.text();
+          return (text ? (text as unknown as T) : (null as T));
+        }
+
         const data = await response.json();
         return data;
       } catch (err) {
@@ -376,6 +386,20 @@ class ApiClient {
     throw lastError instanceof Error ? lastError : new Error('User update endpoint not available');
   }
 
+  async activateUser(userId: string) {
+    const id = encodeURIComponent(userId);
+    return this.request(`/admin/users/${id}/activate`, {
+      method: 'POST',
+    });
+  }
+
+  async deactivateUser(userId: string) {
+    const id = encodeURIComponent(userId);
+    return this.request(`/admin/users/${id}/deactivate`, {
+      method: 'POST',
+    });
+  }
+
   async deleteUser(userId: string) {
     throw new Error('Not implemented: deleteUser requires backend support');
   }
@@ -397,6 +421,87 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(applicationData),
     });
+  }
+
+  async getMyDriverApplication() {
+    const data = await this.request('/drivers/applications/me');
+    if (Array.isArray(data)) {
+      const sorted = [...data].sort((a, b) => {
+        const aTime = typeof a?.created_at === 'string' ? Date.parse(a.created_at) : 0;
+        const bTime = typeof b?.created_at === 'string' ? Date.parse(b.created_at) : 0;
+        return bTime - aTime;
+      });
+      return sorted[0] ?? null;
+    }
+    return data;
+  }
+
+  async withdrawMyDriverApplication() {
+    const candidates = [
+      { path: '/drivers/applications/me', method: 'DELETE' as const },
+      { path: '/drivers/applications/me/withdraw', method: 'POST' as const },
+      { path: '/drivers/applications/withdraw', method: 'POST' as const },
+      { path: '/drivers/applications/me', method: 'POST' as const },
+    ];
+
+    let lastError: unknown = null;
+    for (const candidate of candidates) {
+      try {
+        return await this.request(candidate.path, {
+          method: candidate.method,
+        });
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error('Withdraw application endpoint not available');
+  }
+
+  async getAdminDriverApplications() {
+    const candidates = [
+      '/admin/driver-applications',
+      '/admin/drivers/applications',
+      '/admin/driver_applications',
+      '/admin/drivers/applications/all',
+      '/drivers/applications',
+      '/admin/drivers',
+    ];
+
+    let lastError: unknown = null;
+    for (const path of candidates) {
+      try {
+        return await this.request(path);
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error('Driver applications admin endpoint not available');
+  }
+
+  async updateDriverApplicationStatus(applicationId: string, status: 'approve' | 'reject') {
+    const id = encodeURIComponent(applicationId);
+    const candidates = [
+      { path: `/admin/driver-applications/${id}/${status}`, method: 'PATCH' as const },
+      { path: `/admin/drivers/applications/${id}/${status}`, method: 'POST' as const },
+      { path: `/admin/drivers/applications/${id}/${status}`, method: 'PATCH' as const },
+      { path: `/admin/driver-applications/${id}`, method: 'PUT' as const, body: { status } },
+      { path: `/admin/driver_applications/${id}`, method: 'PUT' as const, body: { status } },
+      { path: `/admin/drivers/applications/${id}`, method: 'PUT' as const, body: { status } },
+      { path: `/admin/drivers/applications/${id}`, method: 'PATCH' as const, body: { status } },
+    ];
+
+    let lastError: unknown = null;
+    for (const candidate of candidates) {
+      try {
+        return await this.request(candidate.path, {
+          method: candidate.method,
+          ...(candidate.body ? { body: JSON.stringify(candidate.body) } : {}),
+        });
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error('Driver application update endpoint not available');
   }
 
   async updateDriver(driverId: string, driverData: any) {
@@ -434,7 +539,10 @@ class ApiClient {
   }
 
   async deleteDriver(driverId: string) {
-    throw new Error('Not implemented: deleteDriver requires backend support');
+    const id = encodeURIComponent(driverId);
+    return this.request(`/admin/drivers/${id}`, {
+      method: 'DELETE',
+    });
   }
 
   // Fares endpoints
@@ -543,23 +651,27 @@ class ApiClient {
   }
 
   async createOffer(offerData: any) {
-    return this.request('/offers', {
+    return this.request('/admin/offers', {
       method: 'POST',
       body: JSON.stringify(offerData),
     });
   }
 
   async updateOffer(offerId: string, offerData: any) {
-    return this.request(`/offers/${encodeURIComponent(offerId)}`, {
+    return this.request(`/admin/offers/${encodeURIComponent(offerId)}`, {
       method: 'PUT',
       body: JSON.stringify(offerData),
     });
   }
 
   async deleteOffer(offerId: string) {
-    return this.request(`/offers/${encodeURIComponent(offerId)}`, {
+    return this.request(`/admin/offers/${encodeURIComponent(offerId)}`, {
       method: 'DELETE',
     });
+  }
+
+  async getAdminOffersAll() {
+    return this.request('/admin/offers/all');
   }
 
   async getUser() {

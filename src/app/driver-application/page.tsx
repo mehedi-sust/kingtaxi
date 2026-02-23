@@ -39,9 +39,17 @@ export default function DriverApplication() {
     experience: '',
     availability: '',
     vehicle_owned: '',
+    vehicle_make: '',
+    vehicle_model: '',
+    vehicle_year: '',
+    vehicle_plate: '',
+    vehicle_color: '',
     message: '',
   });
 
+  const [application, setApplication] = useState<any | null>(null);
+  const [applicationLoaded, setApplicationLoaded] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -103,19 +111,72 @@ export default function DriverApplication() {
     };
   }, [isAuthenticated, user?.identifier]);
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setApplication(null);
+      setApplicationLoaded(true);
+      return;
+    }
+
+    let cancelled = false;
+    setApplicationLoaded(false);
+
+    const load = async () => {
+      try {
+        const data = await apiClient.getMyDriverApplication();
+        if (cancelled) return;
+        if (data && typeof data === 'object') {
+          setApplication(data);
+        } else {
+          setApplication(null);
+        }
+      } catch {
+        if (cancelled) return;
+        setApplication(null);
+      } finally {
+        if (cancelled) return;
+        setApplicationLoaded(true);
+      }
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
+      const hasVehicle =
+        formData.vehicle_owned === 'Yes - suitable for taxi work' ||
+        formData.vehicle_owned === 'Yes - but needs inspection';
       const payload = {
         name: String(formData.name || '').trim(),
         phone: String(formData.phone || '').trim(),
         email: String(formData.email || '').trim(),
         license_number: String(formData.license_number || '').trim(),
+        ...(hasVehicle
+          ? {
+              vehicle_make: String(formData.vehicle_make || '').trim(),
+              vehicle_model: String(formData.vehicle_model || '').trim(),
+              vehicle_year: formData.vehicle_year ? Number(formData.vehicle_year) : undefined,
+              vehicle_plate: String(formData.vehicle_plate || '').trim(),
+              vehicle_color: String(formData.vehicle_color || '').trim(),
+            }
+          : {}),
       };
 
       await apiClient.createDriverApplication(payload);
+      try {
+        const next = await apiClient.getMyDriverApplication();
+        setApplication(next);
+      } catch {
+        setSubmitted(true);
+      }
       setSubmitted(true);
     } catch (error) {
       console.error('Driver application error:', error);
@@ -124,6 +185,27 @@ export default function DriverApplication() {
       setIsLoading(false);
     }
   };
+
+  const handleWithdraw = async () => {
+    setWithdrawing(true);
+    try {
+      await apiClient.withdrawMyDriverApplication();
+      setApplication(null);
+      setSubmitted(false);
+    } catch (error) {
+      alert(`Withdrawal failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
+  const normalizeStatus = (input: any) => String(input ?? '').trim().toLowerCase();
+  const applicationStatus = normalizeStatus(application?.status);
+  const isAccepted =
+    application?.is_approved === true ||
+    applicationStatus === 'approved' ||
+    applicationStatus === 'accepted' ||
+    applicationStatus === 'active';
 
   const benefits = [
     {
@@ -166,6 +248,78 @@ export default function DriverApplication() {
     'Reliable and punctual',
     'Basic English communication skills',
   ];
+
+  if (isAuthenticated && !applicationLoaded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center px-4 pt-20">
+        <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto" />
+          <p className="mt-4 text-gray-600 dark:text-gray-300">Loading your application status...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated && application) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center px-4 pt-20">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6 }}
+          className="max-w-lg w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8"
+        >
+          <div className="text-center">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 ${isAccepted ? 'bg-green-100' : 'bg-blue-100'}`}>
+              <CheckCircle className={`w-8 h-8 ${isAccepted ? 'text-green-600' : 'text-blue-600'}`} />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">You already applied</h2>
+            <p className="text-gray-600 dark:text-gray-300">
+              This is your current driver application status.
+            </p>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+              <div className="text-sm text-gray-600 dark:text-gray-300">Status</div>
+              <div className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
+                {String(application?.status ?? (application?.is_approved ? 'approved' : 'submitted'))}
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              {isAccepted ? (
+                <Link
+                  href="/driver-dashboard"
+                  className="flex-1 inline-flex items-center justify-center bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200"
+                >
+                  Go to Driver Dashboard
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Link>
+              ) : (
+                <>
+                  <button
+                    onClick={handleWithdraw}
+                    disabled={withdrawing}
+                    className="flex-1 inline-flex items-center justify-center border border-red-600 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 px-6 py-3 rounded-lg font-semibold transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {withdrawing ? 'Withdrawing…' : 'Withdraw Application'}
+                  </button>
+                  <Link
+                    href="/"
+                    className="flex-1 inline-flex items-center justify-center bg-gray-900 hover:bg-black text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200"
+                  >
+                    Return to Home
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
@@ -458,6 +612,93 @@ export default function DriverApplication() {
                       <option value="No - need company vehicle">No - need company vehicle</option>
                     </select>
                   </div>
+
+                  {(formData.vehicle_owned === 'Yes - suitable for taxi work' ||
+                    formData.vehicle_owned === 'Yes - but needs inspection') && (
+                    <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4 bg-gray-50 dark:bg-gray-900/40">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label htmlFor="vehicleMake" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Vehicle Make *
+                          </label>
+                          <input
+                            type="text"
+                            id="vehicleMake"
+                            name="vehicleMake"
+                            value={formData.vehicle_make}
+                            onChange={(e) => setFormData(prev => ({ ...prev, vehicle_make: e.target.value }))}
+                            required
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
+                            placeholder="e.g. Toyota"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="vehicleModel" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Vehicle Model *
+                          </label>
+                          <input
+                            type="text"
+                            id="vehicleModel"
+                            name="vehicleModel"
+                            value={formData.vehicle_model}
+                            onChange={(e) => setFormData(prev => ({ ...prev, vehicle_model: e.target.value }))}
+                            required
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
+                            placeholder="e.g. Camry"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label htmlFor="vehicleYear" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Vehicle Year *
+                          </label>
+                          <input
+                            type="number"
+                            id="vehicleYear"
+                            name="vehicleYear"
+                            value={formData.vehicle_year}
+                            onChange={(e) => setFormData(prev => ({ ...prev, vehicle_year: e.target.value }))}
+                            required
+                            min="1980"
+                            max={new Date().getFullYear() + 1}
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
+                            placeholder="2022"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="vehiclePlate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Plate Number *
+                          </label>
+                          <input
+                            type="text"
+                            id="vehiclePlate"
+                            name="vehiclePlate"
+                            value={formData.vehicle_plate}
+                            onChange={(e) => setFormData(prev => ({ ...prev, vehicle_plate: e.target.value }))}
+                            required
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
+                            placeholder="ABC-1234"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="vehicleColor" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Vehicle Color *
+                          </label>
+                          <input
+                            type="text"
+                            id="vehicleColor"
+                            name="vehicleColor"
+                            value={formData.vehicle_color}
+                            onChange={(e) => setFormData(prev => ({ ...prev, vehicle_color: e.target.value }))}
+                            required
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
+                            placeholder="White"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <label htmlFor="message" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

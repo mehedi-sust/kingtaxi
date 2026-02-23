@@ -108,12 +108,9 @@ export default function BookingsPage() {
               const pickupDate = b.pickup_time ? new Date(b.pickup_time) : null;
               const status = (b.status || 'UNKNOWN').toString();
               const canCancel = !['CANCELLED', 'COMPLETED'].includes(status.toUpperCase());
-              const fare =
-                typeof b.confirmed_fare === 'number'
-                  ? b.confirmed_fare
-                  : typeof b.estimated_fare === 'number'
-                  ? b.estimated_fare
-                  : null;
+              const confirmedFare = typeof b.confirmed_fare === 'number' ? b.confirmed_fare : null;
+              const estimatedFare =
+                confirmedFare === null && typeof b.estimated_fare === 'number' ? b.estimated_fare : null;
 
               return (
                 <div
@@ -140,7 +137,11 @@ export default function BookingsPage() {
                                 : '—'}
                             </span>
                             {b.vehicle_type ? <span>{b.vehicle_type}</span> : null}
-                            {fare !== null ? <span>£{fare.toFixed(2)}</span> : null}
+                            {confirmedFare !== null ? (
+                              <span>£{confirmedFare.toFixed(2)}</span>
+                            ) : estimatedFare !== null ? (
+                              <span>£{estimatedFare.toFixed(2)}</span>
+                            ) : null}
                           </div>
                         </div>
                       </div>
@@ -179,4 +180,3 @@ export default function BookingsPage() {
     </div>
   );
 }
-
