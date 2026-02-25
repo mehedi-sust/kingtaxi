@@ -10,6 +10,8 @@ import {
   TrendingUp, 
   Calendar,
   Eye,
+  Edit,
+  Trash2,
   CheckCircle,
   XCircle,
   Shield,
@@ -51,6 +53,15 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [userModalMode, setUserModalMode] = useState<'view' | 'edit'>('view');
+  const [userForm, setUserForm] = useState({
+    full_name: '',
+    email: '',
+    phone: '',
+    role: '',
+  });
+  const [userFormError, setUserFormError] = useState<string | null>(null);
+  const [userFormSaving, setUserFormSaving] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [showDriverModal, setShowDriverModal] = useState(false);
   const [showDriverMgmtModal, setShowDriverMgmtModal] = useState(false);
@@ -328,6 +339,19 @@ export default function AdminDashboard() {
   ];
   const driverStatusOptions = ['active', 'busy', 'offline', 'suspended', 'terminated', 'on_hold'];
 
+  const openUserModal = (userRecord: User, mode: 'view' | 'edit' = 'view') => {
+    setSelectedUser(userRecord);
+    setUserModalMode(mode);
+    setUserForm({
+      full_name: userRecord.full_name || '',
+      email: userRecord.email || '',
+      phone: userRecord.phone || '',
+      role: userRecord.role || '',
+    });
+    setUserFormError(null);
+    setShowUserModal(true);
+  };
+
   const handleUserActiveChange = async (userId: string, is_active: boolean) => {
     try {
       if (is_active) {
@@ -340,6 +364,58 @@ export default function AdminDashboard() {
       setUsers((prev) => prev.map((user) => (user.id === userId ? { ...user, is_active } : user)));
     } catch (error) {
       console.error('Error updating user:', error);
+    }
+  };
+
+  const handleUserUpdate = async () => {
+    if (!selectedUser) return;
+    try {
+      setUserFormSaving(true);
+      setUserFormError(null);
+      const payload = {
+        full_name: userForm.full_name.trim() || null,
+        email: userForm.email.trim() || null,
+        phone: userForm.phone.trim(),
+        role: userForm.role.trim() || selectedUser.role,
+      };
+      await apiClient.updateUser(selectedUser.id, payload);
+      const nextUser = {
+        ...selectedUser,
+        full_name: payload.full_name,
+        email: payload.email,
+        phone: payload.phone || selectedUser.phone,
+        role: payload.role || selectedUser.role,
+      };
+      setUsers((prev) => prev.map((user) => (user.id === selectedUser.id ? nextUser : user)));
+      setSelectedUser(nextUser);
+      setUserModalMode('view');
+    } catch (error) {
+      setUserFormError(error instanceof Error ? error.message : 'Failed to update user');
+    } finally {
+      setUserFormSaving(false);
+    }
+  };
+
+  const handleUserDelete = async (userId: string, fromModal = false) => {
+    const confirmed = window.confirm('Delete this user? This action cannot be undone.');
+    if (!confirmed) return;
+    try {
+      if (fromModal) {
+        setUserFormError(null);
+      }
+      await apiClient.deleteUser(userId);
+      setUsers((prev) => prev.filter((user) => user.id !== userId));
+      if (selectedUser?.id === userId) {
+        setShowUserModal(false);
+        setSelectedUser(null);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete user';
+      if (fromModal) {
+        setUserFormError(message);
+      } else {
+        window.alert(message);
+      }
     }
   };
 
@@ -647,15 +723,27 @@ export default function AdminDashboard() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
                             <button 
-                              onClick={() => {setSelectedUser(user); setShowUserModal(true);}}
+                              onClick={() => openUserModal(user, 'view')}
                               className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
+                            <button 
+                              onClick={() => openUserModal(user, 'edit')}
+                              className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleUserDelete(user.id)}
+                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                             {user.is_active ? (
                               <button
                                 onClick={() => handleUserActiveChange(user.id, false)}
-                                className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                className="text-orange-600 hover:text-orange-900 dark:text-orange-400 dark:hover:text-orange-300"
                               >
                                 <XCircle className="w-4 h-4" />
                               </button>
@@ -1047,15 +1135,17 @@ export default function AdminDashboard() {
 
         {/* User Detail Modal */}
         {showUserModal && selectedUser && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center overflow-y-auto px-4 pb-8 pt-24 sm:pt-28 sm:pb-12">
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6"
+              className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full max-h-[calc(100vh-6rem)] overflow-y-auto p-6"
             >
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">User Details</h3>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {userModalMode === 'edit' ? 'Edit User' : 'User Details'}
+                </h3>
                 <button 
                   onClick={() => setShowUserModal(false)}
                   className="text-gray-400 hover:text-gray-600"
@@ -1066,58 +1156,139 @@ export default function AdminDashboard() {
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</label>
-                  <p className="text-gray-900 dark:text-white">{selectedUser.full_name || selectedUser.phone}</p>
+                  {userModalMode === 'edit' ? (
+                    <input
+                      value={userForm.full_name}
+                      onChange={(e) => setUserForm((prev) => ({ ...prev, full_name: e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="Full name"
+                    />
+                  ) : (
+                    <p className="text-gray-900 dark:text-white">{selectedUser.full_name || selectedUser.phone}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</label>
-                  <p className="text-gray-900 dark:text-white">{selectedUser.email || '-'}</p>
+                  {userModalMode === 'edit' ? (
+                    <input
+                      type="email"
+                      value={userForm.email}
+                      onChange={(e) => setUserForm((prev) => ({ ...prev, email: e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="Email address"
+                    />
+                  ) : (
+                    <p className="text-gray-900 dark:text-white">{selectedUser.email || '-'}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Phone</label>
-                  <p className="text-gray-900 dark:text-white">{selectedUser.phone}</p>
+                  {userModalMode === 'edit' ? (
+                    <input
+                      value={userForm.phone}
+                      onChange={(e) => setUserForm((prev) => ({ ...prev, phone: e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="Phone number"
+                    />
+                  ) : (
+                    <p className="text-gray-900 dark:text-white">{selectedUser.phone}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Role</label>
-                  <p className="text-gray-900 dark:text-white">{selectedUser.role}</p>
+                  {userModalMode === 'edit' ? (
+                    <input
+                      value={userForm.role}
+                      onChange={(e) => setUserForm((prev) => ({ ...prev, role: e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="Role"
+                    />
+                  ) : (
+                    <p className="text-gray-900 dark:text-white">{selectedUser.role}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
                   <p className="text-gray-900 dark:text-white">{selectedUser.is_active ? 'Active' : 'Inactive'}</p>
                 </div>
+                {userFormError && (
+                  <div className="text-sm text-red-600 dark:text-red-400">{userFormError}</div>
+                )}
               </div>
               <div className="flex space-x-3 mt-6">
-                {selectedUser.is_active ? (
-                  <button
-                    onClick={() => {
-                      handleUserActiveChange(selectedUser.id, false);
-                      setShowUserModal(false);
-                    }}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200"
-                  >
-                    Deactivate
-                  </button>
+                {userModalMode === 'edit' ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        setUserModalMode('view');
+                        setUserForm({
+                          full_name: selectedUser.full_name || '',
+                          email: selectedUser.email || '',
+                          phone: selectedUser.phone || '',
+                          role: selectedUser.role || '',
+                        });
+                        setUserFormError(null);
+                      }}
+                      className="flex-1 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 py-2 px-4 rounded-lg font-medium transition-colors duration-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleUserUpdate}
+                      disabled={userFormSaving || !userForm.phone}
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {userFormSaving ? 'Saving…' : 'Save'}
+                    </button>
+                  </>
                 ) : (
-                  <button
-                    onClick={() => {
-                      handleUserActiveChange(selectedUser.id, true);
-                      setShowUserModal(false);
-                    }}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200"
-                  >
-                    Activate
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setUserModalMode('edit')}
+                      className="flex-1 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 py-2 px-4 rounded-lg font-medium transition-colors duration-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleUserDelete(selectedUser.id, true)}
+                      className="flex-1 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 py-2 px-4 rounded-lg font-medium transition-colors duration-200 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    >
+                      Delete
+                    </button>
+                    {selectedUser.is_active ? (
+                      <button
+                        onClick={() => {
+                          handleUserActiveChange(selectedUser.id, false);
+                          setShowUserModal(false);
+                        }}
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200"
+                      >
+                        Deactivate
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          handleUserActiveChange(selectedUser.id, true);
+                          setShowUserModal(false);
+                        }}
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200"
+                      >
+                        Activate
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </motion.div>
           </div>
         )}
         {showDriverMgmtModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center overflow-y-auto px-4 pb-8 pt-24 sm:pt-28 sm:pb-12">
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6"
+              className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full max-h-[calc(100vh-6rem)] overflow-y-auto p-6"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -1197,12 +1368,12 @@ export default function AdminDashboard() {
           </div>
         )}
         {showDriverModal && selectedDriver && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center overflow-y-auto px-4 pb-8 pt-24 sm:pt-28 sm:pb-12">
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6"
+              className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full max-h-[calc(100vh-6rem)] overflow-y-auto p-6"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">Driver Application</h3>

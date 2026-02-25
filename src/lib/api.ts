@@ -2,7 +2,13 @@ const DEFAULT_REMOTE_API_URL =
   process.env.API_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
   'https://kingtaxi-webapp-backend.onrender.com';
-const API_BASE_URL = typeof window !== 'undefined' ? '/api' : DEFAULT_REMOTE_API_URL;
+const normalizeBaseUrl = (value: string) => (value.endsWith('/') ? value.slice(0, -1) : value);
+const API_BASE_URL =
+  typeof window !== 'undefined'
+    ? normalizeBaseUrl(
+        process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || '/api'
+      )
+    : normalizeBaseUrl(DEFAULT_REMOTE_API_URL);
 
 class ApiClient {
   private baseURL: string;
@@ -401,7 +407,23 @@ class ApiClient {
   }
 
   async deleteUser(userId: string) {
-    throw new Error('Not implemented: deleteUser requires backend support');
+    const id = encodeURIComponent(userId);
+    const candidates = [
+      { path: `/admin/users/${id}`, method: 'DELETE' as const },
+      { path: `/users/${id}`, method: 'DELETE' as const },
+    ];
+
+    let lastError: unknown = null;
+    for (const candidate of candidates) {
+      try {
+        return await this.request(candidate.path, {
+          method: candidate.method,
+        });
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error('User delete endpoint not available');
   }
 
   // Drivers endpoints
