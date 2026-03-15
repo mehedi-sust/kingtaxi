@@ -92,17 +92,36 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [usersData, driversData] = await Promise.all([
+      const [usersData, driversData, offersData] = await Promise.all([
         apiClient.getUsers().catch(() => []),
         apiClient.getDrivers().catch(() => []),
+        apiClient.getAdminOffersAll().catch(() => apiClient.getOffers()).catch(() => []),
       ]);
+
+      const toTimestamp = (value?: string | null) => {
+        if (!value) return null;
+        const parsed = new Date(String(value));
+        if (Number.isNaN(parsed.getTime())) return null;
+        return parsed.getTime();
+      };
+      const now = Date.now();
+      const activeOffers = Array.isArray(offersData)
+        ? offersData.filter((offer: any) => {
+            const isActiveFlag = offer?.is_active !== false;
+            const start = toTimestamp(offer?.valid_from ?? offer?.start_date ?? null);
+            const end = toTimestamp(offer?.valid_until ?? offer?.end_date ?? null);
+            const afterStart = start === null || start <= now;
+            const beforeEnd = end === null || now <= end;
+            return isActiveFlag && afterStart && beforeEnd;
+          }).length
+        : 0;
 
       setUsers(usersData as User[]);
       setDrivers(driversData as Driver[]);
       setStats({
         totalUsers: (usersData as User[]).length,
         totalDrivers: (driversData as Driver[]).length,
-        activeOffers: 0,
+        activeOffers,
       });
     } catch (error) {
       console.error('Error fetching data:', error);
