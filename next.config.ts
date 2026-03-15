@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
     const rawApiUrl =
       process.env.API_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
-      (isDev ? "http://localhost:8000" : "https://kingtaxi-webapp-backend.onrender.com");
+      (isDev ? "http://localhost:8000" : "https://kingtaxi-webapp-backend.vercel.app");
     const apiUrl = rawApiUrl.endsWith("/") ? rawApiUrl.slice(0, -1) : rawApiUrl;
     return [
       {
