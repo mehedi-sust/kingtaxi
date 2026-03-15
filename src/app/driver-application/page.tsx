@@ -52,6 +52,7 @@ export default function DriverApplication() {
   const [withdrawing, setWithdrawing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -149,6 +150,7 @@ export default function DriverApplication() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setStatusMessage(null);
 
     try {
       const hasVehicle =
@@ -180,7 +182,10 @@ export default function DriverApplication() {
       setSubmitted(true);
     } catch (error) {
       console.error('Driver application error:', error);
-      alert(`Application failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setStatusMessage({
+        type: 'error',
+        text: `Application failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -188,12 +193,17 @@ export default function DriverApplication() {
 
   const handleWithdraw = async () => {
     setWithdrawing(true);
+    setStatusMessage(null);
     try {
       await apiClient.withdrawMyDriverApplication();
       setApplication(null);
       setSubmitted(false);
+      setStatusMessage({ type: 'success', text: 'Your application has been withdrawn.' });
     } catch (error) {
-      alert(`Withdrawal failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setStatusMessage({
+        type: 'error',
+        text: `Withdrawal failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
     } finally {
       setWithdrawing(false);
     }
@@ -280,6 +290,19 @@ export default function DriverApplication() {
           </div>
 
           <div className="mt-6 space-y-4">
+            {statusMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`rounded-lg border px-4 py-3 text-sm ${
+                  statusMessage.type === 'error'
+                    ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
+                    : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300'
+                }`}
+              >
+                {statusMessage.text}
+              </motion.div>
+            )}
             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
               <div className="text-sm text-gray-600 dark:text-gray-300">Status</div>
               <div className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
@@ -437,6 +460,20 @@ export default function DriverApplication() {
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Driver Application Form</h2>
                   <p className="text-gray-600 dark:text-gray-300">Fill out the form below to apply for a driving position with King Taxi.</p>
                 </div>
+
+                {statusMessage && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`mb-6 rounded-lg border px-4 py-3 text-sm ${
+                      statusMessage.type === 'error'
+                        ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
+                        : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300'
+                    }`}
+                  >
+                    {statusMessage.text}
+                  </motion.div>
+                )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>

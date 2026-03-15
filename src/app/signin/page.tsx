@@ -91,7 +91,7 @@ export default function SignIn() {
               )}
               
               <div>
-                  <label htmlFor="emailOrPhone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label htmlFor="emailOrPhone" className="block text-sm font-medium text-gray-700 mb-2">
                   Email or Phone
                 </label>
                 <div className="relative">
@@ -110,7 +110,7 @@ export default function SignIn() {
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                   Password
                 </label>
                 <div className="relative">
@@ -122,13 +122,13 @@ export default function SignIn() {
                     value={formData.password}
                     onChange={handleInputChange}
                     required
-                    className="w-full pl-12 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200"
                     placeholder="Enter your password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -145,7 +145,7 @@ export default function SignIn() {
                     onChange={handleInputChange}
                     className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 focus:ring-2"
                   />
-                  <label htmlFor="rememberMe" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                  <label htmlFor="rememberMe" className="ml-2 text-sm text-gray-700">
                     Remember me
                   </label>
                 </div>

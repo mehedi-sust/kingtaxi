@@ -10,8 +10,6 @@ import {
   TrendingUp, 
   Calendar,
   Eye,
-  Edit,
-  Trash2,
   CheckCircle,
   XCircle,
   Shield,
@@ -28,24 +26,32 @@ import { apiClient } from '@/lib/api';
 
 interface User {
   id: string;
-  phone: string;
-  email?: string | null;
-  full_name?: string | null;
-  role: string;
-  is_active: boolean;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  account_type?: string;
+  role?: string;
+  is_approved?: boolean;
+  is_active?: boolean;
+  created_at?: string;
+  message?: string;
 }
 
 interface Driver {
   id: string;
-  full_name?: string;
   first_name?: string;
   last_name?: string;
-  email: string;
+  name?: string;
+  email?: string;
   phone?: string;
-  license_number?: string;
-  is_approved: boolean;
+  experience?: string;
+  vehicle_model?: string;
+  vehicle_plate?: string;
   status?: string;
-  created_at: string;
+  is_approved?: boolean;
+  created_at?: string;
   message?: string;
 }
 
@@ -53,51 +59,16 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
-  const [userModalMode, setUserModalMode] = useState<'view' | 'edit'>('view');
-  const [userForm, setUserForm] = useState({
-    full_name: '',
-    email: '',
-    phone: '',
-    role: '',
-  });
-  const [userFormError, setUserFormError] = useState<string | null>(null);
-  const [userFormSaving, setUserFormSaving] = useState(false);
-  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
-  const [showDriverModal, setShowDriverModal] = useState(false);
-  const [showDriverMgmtModal, setShowDriverMgmtModal] = useState(false);
-  const [driverMgmtMode, setDriverMgmtMode] = useState<'create' | 'edit'>('create');
-  const [driverMgmtForm, setDriverMgmtForm] = useState({
-    id: '',
-    name: '',
-    phone: '',
-    vehicle_plate: '',
-    vehicle_model: '',
-    status: 'offline',
-  });
-  const [driverMgmtError, setDriverMgmtError] = useState<string | null>(null);
-  const [driverMgmtSaving, setDriverMgmtSaving] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
-  const [driverApplications, setDriverApplications] = useState<Driver[]>([]);
-  const [drivers, setDrivers] = useState<Array<{
-    id: string;
-    name: string;
-    phone: string;
-    email?: string;
-    vehicle_plate?: string;
-    vehicle_model?: string;
-    status?: string;
-    created_at?: string;
-  }>>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [stats, setStats] = useState({
     totalUsers: 0,
-    totalDriverApplications: 0,
     totalDrivers: 0,
     activeOffers: 0,
   });
   const [loading, setLoading] = useState(true);
   const [usersPage, setUsersPage] = useState(1);
   const [driversPage, setDriversPage] = useState(1);
-  const [driversMgmtPage, setDriversMgmtPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
@@ -109,161 +80,37 @@ export default function AdminDashboard() {
   }, [isAuthenticated, isLoading, router]);
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated && !user?.isAdmin) {
-      setLoading(false);
-      router.replace('/');
+    if (isAuthenticated && user?.isAdmin) {
+      fetchData();
       return;
     }
-    if (!isLoading && isAuthenticated && user?.isAdmin) {
-      fetchData();
+    if (isAuthenticated && !user?.isAdmin) {
+      setLoading(false);
     }
-  }, [isAuthenticated, isLoading, router, user]);
-
-  useEffect(() => {
-    const isModalOpen = showUserModal || showDriverModal || showDriverMgmtModal;
-    if (!isModalOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [showUserModal, showDriverModal, showDriverMgmtModal]);
+  }, [isAuthenticated, user]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [usersData, driverApplicationsData, driversData, offersData] = await Promise.all([
+      const [usersData, driversData] = await Promise.all([
         apiClient.getUsers().catch(() => []),
-        apiClient.getAdminDriverApplications().catch(() => []),
         apiClient.getDrivers().catch(() => []),
-        apiClient.getAdminOffersAll().catch(() => apiClient.getOffers().catch(() => [])),
       ]);
 
-      const activeOffers = Array.isArray(offersData)
-        ? (offersData as Array<{ is_active?: boolean }>).filter((o) => o?.is_active).length
-        : 0;
-
-      const rawDrivers = Array.isArray(driversData)
-        ? driversData
-        : Array.isArray((driversData as any)?.drivers)
-        ? (driversData as any).drivers
-        : Array.isArray((driversData as any)?.data)
-        ? (driversData as any).data
-        : [];
-
-      const isDriverRecord = (input: any) =>
-        typeof input?.vehicle_plate === 'string' ||
-        typeof input?.vehicle_model === 'string' ||
-        typeof input?.status === 'string' ||
-        typeof input?.current_lat === 'number' ||
-        typeof input?.current_lng === 'number' ||
-        typeof input?.user_id === 'string' ||
-        (typeof input?.name === 'string' && typeof input?.phone === 'string');
-
-      const splitFullName = (fullName: string) => {
-        const parts = fullName.trim().split(/\s+/).filter(Boolean);
-        const first = parts[0] || '';
-        const last = parts.slice(1).join(' ');
-        return { first, last };
-      };
-
-      const normalizeDriverName = (input: any) =>
-        (typeof input?.name === 'string' && input.name.trim()) ||
-        [input?.first_name, input?.last_name].filter(Boolean).join(' ').trim() ||
-        (typeof input?.full_name === 'string' && input.full_name.trim()) ||
-        (typeof input?.email === 'string' && input.email.trim()) ||
-        (typeof input?.phone === 'string' && input.phone.trim()) ||
-        String(input?.id ?? '');
-
-      const rawApplications = Array.isArray(driverApplicationsData)
-        ? driverApplicationsData
-        : Array.isArray((driverApplicationsData as any)?.applications)
-        ? (driverApplicationsData as any).applications
-        : Array.isArray((driverApplicationsData as any)?.data)
-        ? (driverApplicationsData as any).data
-        : driverApplicationsData
-        ? [driverApplicationsData]
-        : [];
-
-      const nextDriverApplications = (rawApplications as any[])
-        .filter((d) => d && typeof d === 'object')
-        .map((d) => {
-          const fullName =
-            (typeof d.full_name === 'string' && d.full_name.trim()) ||
-            (typeof d.fullName === 'string' && d.fullName.trim()) ||
-            (typeof d.name === 'string' && d.name.trim()) ||
-            [d.first_name, d.last_name].filter(Boolean).join(' ').trim();
-          const names = fullName ? splitFullName(fullName) : { first: '', last: '' };
-          const status = typeof d.status === 'string' ? d.status : undefined;
-          const normalizedStatus = status ? status.trim().toLowerCase() : '';
-          const isApproved =
-            typeof d.is_approved === 'boolean'
-              ? Boolean(d.is_approved)
-              : normalizedStatus === 'approved' || normalizedStatus === 'accepted' || normalizedStatus === 'active';
-          const licenseNumber =
-            (typeof d.license_number === 'string' && d.license_number.trim()) ||
-            (typeof d.licenseNumber === 'string' && d.licenseNumber.trim()) ||
-            '';
-          const phone =
-            (typeof d.phone === 'string' && d.phone.trim()) ||
-            (typeof d.mobile === 'string' && d.mobile.trim()) ||
-            '';
-
-          return {
-            id: String(d.id ?? ''),
-            full_name: fullName || undefined,
-            first_name: String(d.first_name ?? names.first ?? ''),
-            last_name: String(d.last_name ?? names.last ?? ''),
-            email: typeof d.email === 'string' ? d.email : '',
-            phone,
-            license_number: licenseNumber,
-            is_approved: isApproved,
-            status,
-            created_at: String(d.created_at ?? ''),
-            message: typeof d.message === 'string' ? d.message : undefined,
-          };
-        });
-
-      const nextDrivers = (rawDrivers as any[])
-        .filter((d) => d && typeof d === 'object' && isDriverRecord(d))
-        .map((d) => ({
-          id: String(d.id ?? ''),
-          name: normalizeDriverName(d),
-          phone: String(d.phone ?? d.mobile ?? ''),
-          email: typeof d.email === 'string' ? d.email : undefined,
-          vehicle_plate: typeof d.vehicle_plate === 'string' ? d.vehicle_plate : undefined,
-          vehicle_model: typeof d.vehicle_model === 'string' ? d.vehicle_model : undefined,
-          status: typeof d.status === 'string' ? d.status : undefined,
-          created_at: typeof d.created_at === 'string' ? d.created_at : undefined,
-        }));
-
-      const nextUsers = (Array.isArray(usersData) ? usersData : []).map((u: any) => ({
-        id: String(u?.id ?? ''),
-        phone: String(u?.phone ?? ''),
-        email: typeof u?.email === 'string' ? u.email : null,
-        full_name: typeof u?.full_name === 'string' ? u.full_name : null,
-        role: String(u?.role ?? ''),
-        is_active: Boolean(u?.is_active),
-      }));
-
-      setUsers(nextUsers);
-      setDriverApplications(nextDriverApplications);
-      setDrivers(nextDrivers);
+      setUsers(usersData as User[]);
+      setDrivers(driversData as Driver[]);
       setStats({
-        totalUsers: nextUsers.length,
-        totalDriverApplications: nextDriverApplications.length,
-        totalDrivers: nextDrivers.length,
-        activeOffers,
+        totalUsers: (usersData as User[]).length,
+        totalDrivers: (driversData as Driver[]).length,
+        activeOffers: 0,
       });
     } catch (error) {
       console.error('Error fetching data:', error);
       // Set fallback data on error
       setUsers([]);
-      setDriverApplications([]);
       setDrivers([]);
       setStats({
         totalUsers: 0,
-        totalDriverApplications: 0,
         totalDrivers: 0,
         activeOffers: 0,
       });
@@ -308,12 +155,12 @@ export default function AdminDashboard() {
         <div className="text-center">
           <Shield className="w-16 h-16 text-red-600 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Access Denied</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-4">You do not have permission to view this page.</p>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">You do not have permission to access the admin dashboard.</p>
           <button
             onClick={() => router.push('/')}
             className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200"
           >
-            Return Home
+            Go Home
           </button>
         </div>
       </div>
@@ -322,100 +169,32 @@ export default function AdminDashboard() {
 
   const statsCards = [
     { title: 'Total Users', value: (stats?.totalUsers || 0).toString(), change: '+12%', icon: Users, color: 'text-blue-600', bgColor: 'bg-blue-100' },
-    { title: 'Total Drivers', value: (stats?.totalDrivers || 0).toString(), change: '+8%', icon: Car, color: 'text-green-600', bgColor: 'bg-green-100' },
-    { title: 'Driver Applications', value: (stats?.totalDriverApplications || 0).toString(), change: '+5%', icon: FileText, color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
-    { title: 'Active Offers', value: (stats?.activeOffers || 0).toString(), change: '+15%', icon: TrendingUp, color: 'text-purple-600', bgColor: 'bg-purple-100' },
+    { title: 'Driver Applications', value: (stats?.totalDrivers || 0).toString(), change: '+8%', icon: Car, color: 'text-green-600', bgColor: 'bg-green-100' },
+    { title: 'Active Offers', value: (stats?.activeOffers || 0).toString(), change: '+5%', icon: FileText, color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
+    { title: 'Revenue (Month)', value: '£12,450', change: '+15%', icon: TrendingUp, color: 'text-purple-600', bgColor: 'bg-purple-100' },
   ];
 
   const tabs = [
     { id: 'overview', name: 'Overview', icon: TrendingUp },
     { id: 'users', name: 'Users', icon: Users },
     { id: 'drivers', name: 'Driver Applications', icon: Car },
-    { id: 'driversManagement', name: 'Drivers', icon: Car },
     { id: 'vehicles', name: 'Vehicle Management', icon: Car },
     { id: 'fares', name: 'Fare Management', icon: MapPin },
     { id: 'bookings', name: 'Booking Management', icon: Calendar },
     { id: 'offers', name: 'Offers & Promotions', icon: Calendar },
   ];
-  const driverStatusOptions = ['active', 'busy', 'offline', 'suspended', 'terminated', 'on_hold'];
 
-  const openUserModal = (userRecord: User, mode: 'view' | 'edit' = 'view') => {
-    setSelectedUser(userRecord);
-    setUserModalMode(mode);
-    setUserForm({
-      full_name: userRecord.full_name || '',
-      email: userRecord.email || '',
-      phone: userRecord.phone || '',
-      role: userRecord.role || '',
-    });
-    setUserFormError(null);
-    setShowUserModal(true);
-  };
-
-  const handleUserActiveChange = async (userId: string, is_active: boolean) => {
+  const handleUserAction = async (userId: string, action: 'approve' | 'reject') => {
     try {
-      if (is_active) {
-        await apiClient.activateUser(userId);
-      } else {
-        await apiClient.deactivateUser(userId);
-      }
+      const is_approved = action === 'approve';
+      await apiClient.updateUser(userId, { is_approved });
       
       // Update local state
-      setUsers((prev) => prev.map((user) => (user.id === userId ? { ...user, is_active } : user)));
+      setUsers(users.map(user => 
+        user.id === userId ? { ...user, is_approved } : user
+      ));
     } catch (error) {
       console.error('Error updating user:', error);
-    }
-  };
-
-  const handleUserUpdate = async () => {
-    if (!selectedUser) return;
-    try {
-      setUserFormSaving(true);
-      setUserFormError(null);
-      const payload = {
-        full_name: userForm.full_name.trim() || null,
-        email: userForm.email.trim() || null,
-        phone: userForm.phone.trim(),
-        role: userForm.role.trim() || selectedUser.role,
-      };
-      await apiClient.updateUser(selectedUser.id, payload);
-      const nextUser = {
-        ...selectedUser,
-        full_name: payload.full_name,
-        email: payload.email,
-        phone: payload.phone || selectedUser.phone,
-        role: payload.role || selectedUser.role,
-      };
-      setUsers((prev) => prev.map((user) => (user.id === selectedUser.id ? nextUser : user)));
-      setSelectedUser(nextUser);
-      setUserModalMode('view');
-    } catch (error) {
-      setUserFormError(error instanceof Error ? error.message : 'Failed to update user');
-    } finally {
-      setUserFormSaving(false);
-    }
-  };
-
-  const handleUserDelete = async (userId: string, fromModal = false) => {
-    const confirmed = window.confirm('Delete this user? This action cannot be undone.');
-    if (!confirmed) return;
-    try {
-      if (fromModal) {
-        setUserFormError(null);
-      }
-      await apiClient.deleteUser(userId);
-      setUsers((prev) => prev.filter((user) => user.id !== userId));
-      if (selectedUser?.id === userId) {
-        setShowUserModal(false);
-        setSelectedUser(null);
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to delete user';
-      if (fromModal) {
-        setUserFormError(message);
-      } else {
-        window.alert(message);
-      }
     }
   };
 
@@ -423,92 +202,15 @@ export default function AdminDashboard() {
     try {
       if (action === 'approve' || action === 'reject') {
         const is_approved = action === 'approve';
-        await apiClient.updateDriverApplicationStatus(driverId, action);
-        const nextStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
+        await apiClient.updateDriver(driverId, { is_approved });
         
         // Update local state
-        setDriverApplications((prev) =>
-          prev.map((driver) =>
-            driver.id === driverId
-              ? { ...driver, is_approved, status: nextStatus }
-              : driver
-          )
-        );
-        setSelectedDriver((prev) =>
-          prev && prev.id === driverId ? { ...prev, is_approved, status: nextStatus } : prev
-        );
-        if (action === 'approve') {
-          fetchData();
-        }
+        setDrivers(drivers.map(driver => 
+          driver.id === driverId ? { ...driver, is_approved } : driver
+        ));
       }
     } catch (error) {
       console.error('Error updating driver:', error);
-    }
-  };
-
-  const openCreateDriver = () => {
-    setDriverMgmtMode('create');
-    setDriverMgmtForm({
-      id: '',
-      name: '',
-      phone: '',
-      vehicle_plate: '',
-      vehicle_model: '',
-      status: 'offline',
-    });
-    setDriverMgmtError(null);
-    setShowDriverMgmtModal(true);
-  };
-
-  const openEditDriver = (driver: { id: string; name: string; phone: string; vehicle_plate?: string; vehicle_model?: string; status?: string }) => {
-    setDriverMgmtMode('edit');
-    setDriverMgmtForm({
-      id: driver.id,
-      name: driver.name || '',
-      phone: driver.phone || '',
-      vehicle_plate: driver.vehicle_plate || '',
-      vehicle_model: driver.vehicle_model || '',
-      status: driver.status || 'offline',
-    });
-    setDriverMgmtError(null);
-    setShowDriverMgmtModal(true);
-  };
-
-  const handleDriverMgmtSave = async () => {
-    try {
-      setDriverMgmtSaving(true);
-      setDriverMgmtError(null);
-      const payload = {
-        name: driverMgmtForm.name.trim(),
-        phone: driverMgmtForm.phone.trim(),
-        vehicle_plate: driverMgmtForm.vehicle_plate.trim(),
-        vehicle_model: driverMgmtForm.vehicle_model.trim() || null,
-        status: driverMgmtForm.status,
-      };
-
-      if (driverMgmtMode === 'create') {
-        await apiClient.createDriver(payload);
-      } else {
-        await apiClient.updateDriver(driverMgmtForm.id, payload);
-      }
-
-      setShowDriverMgmtModal(false);
-      fetchData();
-    } catch (error) {
-      setDriverMgmtError(error instanceof Error ? error.message : 'Failed to save driver');
-    } finally {
-      setDriverMgmtSaving(false);
-    }
-  };
-
-  const handleDriverDelete = async (driverId: string) => {
-    const confirmed = window.confirm('Delete this driver? This action cannot be undone.');
-    if (!confirmed) return;
-    try {
-      await apiClient.deleteDriver(driverId);
-      setDrivers((prev) => prev.filter((driver) => driver.id !== driverId));
-    } catch (error) {
-      console.error('Error deleting driver:', error);
     }
   };
 
@@ -518,16 +220,8 @@ export default function AdminDashboard() {
   const usersEndIndex = usersStartIndex + itemsPerPage;
   const currentUsers = users.slice(usersStartIndex, usersEndIndex);
 
-  const driverApplicationsTotalPages = Math.ceil(driverApplications.length / itemsPerPage);
-  const driverApplicationsStartIndex = (driversPage - 1) * itemsPerPage;
-  const driverApplicationsEndIndex = driverApplicationsStartIndex + itemsPerPage;
-  const currentDriverApplications = driverApplications.slice(
-    driverApplicationsStartIndex,
-    driverApplicationsEndIndex
-  );
-
   const driversTotalPages = Math.ceil(drivers.length / itemsPerPage);
-  const driversStartIndex = (driversMgmtPage - 1) * itemsPerPage;
+  const driversStartIndex = (driversPage - 1) * itemsPerPage;
   const driversEndIndex = driversStartIndex + itemsPerPage;
   const currentDrivers = drivers.slice(driversStartIndex, driversEndIndex);
 
@@ -536,15 +230,65 @@ export default function AdminDashboard() {
   };
 
   const goToDriversPage = (page: number) => {
-    setDriversPage(Math.max(1, Math.min(page, driverApplicationsTotalPages)));
+    setDriversPage(Math.max(1, Math.min(page, driversTotalPages)));
   };
 
-  const goToDriversMgmtPage = (page: number) => {
-    setDriversMgmtPage(Math.max(1, Math.min(page, driversTotalPages)));
+  const formatDate = (value?: string) => {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString();
+  };
+
+  const getUserDisplayName = (value: User) => {
+    const fullName = value.full_name?.trim();
+    if (fullName) return fullName;
+    const firstName = value.first_name?.trim() || '';
+    const lastName = value.last_name?.trim() || '';
+    const combined = `${firstName} ${lastName}`.trim();
+    if (combined) return combined;
+    return value.phone || value.email || 'Unknown User';
+  };
+
+  const getDriverDisplayName = (value: Driver) => {
+    const name = value.name?.trim();
+    if (name) return name;
+    const firstName = value.first_name?.trim() || '';
+    const lastName = value.last_name?.trim() || '';
+    const combined = `${firstName} ${lastName}`.trim();
+    if (combined) return combined;
+    return value.phone || value.email || 'Unknown Driver';
+  };
+
+  const getUserType = (value: User) => {
+    return value.account_type || value.role || 'customer';
+  };
+
+  const getUserStatusLabel = (value: User) => {
+    if (typeof value.is_approved === 'boolean') {
+      return value.is_approved ? 'Approved' : 'Pending';
+    }
+    if (typeof value.is_active === 'boolean') {
+      return value.is_active ? 'Active' : 'Inactive';
+    }
+    return 'Unknown';
+  };
+
+  const isUserApproved = (value: User) => {
+    if (typeof value.is_approved === 'boolean') return value.is_approved;
+    if (typeof value.is_active === 'boolean') return value.is_active;
+    return false;
+  };
+
+  const getDriverExperience = (value: Driver) => {
+    if (value.experience?.trim()) return value.experience;
+    if (value.vehicle_model?.trim()) return `Vehicle: ${value.vehicle_model}`;
+    if (value.status?.trim()) return `Status: ${value.status}`;
+    return 'Not provided';
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20 relative overflow-hidden isolate">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <motion.div
@@ -621,17 +365,17 @@ export default function AdminDashboard() {
                 <div className="p-6">
                   <div className="space-y-4">
                     {users.slice(0, 3).map((user) => (
-                      <div key={user.id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                      <div key={user.id} className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{user.full_name || user.phone}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{user.email || user.phone}</p>
+                          <p className="font-medium text-gray-900 dark:text-white">{getUserDisplayName(user)}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{user.email || user.phone || '-'}</p>
                         </div>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          user.is_active
+                          isUserApproved(user)
                             ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                         }`}>
-                          {user.is_active ? 'Active' : 'Inactive'}
+                          {getUserStatusLabel(user)}
                         </span>
                       </div>
                     ))}
@@ -645,15 +389,11 @@ export default function AdminDashboard() {
                 </div>
                 <div className="p-6">
                   <div className="space-y-4">
-                    {driverApplications.slice(0, 3).map((driver) => (
-                      <div key={driver.id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                    {drivers.slice(0, 3).map((driver) => (
+                      <div key={driver.id} className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">
-                            {driver.full_name || `${driver.first_name || ''} ${driver.last_name || ''}`.trim()}
-                          </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {driver.license_number || driver.phone || '—'}
-                          </p>
+                          <p className="font-medium text-gray-900 dark:text-white">{getDriverDisplayName(driver)}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{getDriverExperience(driver)}</p>
                         </div>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                           driver.is_approved 
@@ -692,8 +432,9 @@ export default function AdminDashboard() {
                   <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">User</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Role</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
@@ -702,58 +443,50 @@ export default function AdminDashboard() {
                       <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">{user.full_name || user.phone}</div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">{user.email || user.phone}</div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{getUserDisplayName(user)}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">{user.email || user.phone || '-'}</div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                            {user.role}
+                            {getUserType(user)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            user.is_active
+                            isUserApproved(user)
                               ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                              : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                           }`}>
-                            {user.is_active ? 'Active' : 'Inactive'}
+                            {getUserStatusLabel(user)}
                           </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {formatDate(user.created_at)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
                             <button 
-                              onClick={() => openUserModal(user, 'view')}
+                              onClick={() => {setSelectedUser(user); setShowUserModal(true);}}
                               className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
-                            <button 
-                              onClick={() => openUserModal(user, 'edit')}
-                              className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleUserDelete(user.id)}
-                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                            {user.is_active ? (
-                              <button
-                                onClick={() => handleUserActiveChange(user.id, false)}
-                                className="text-orange-600 hover:text-orange-900 dark:text-orange-400 dark:hover:text-orange-300"
-                              >
-                                <XCircle className="w-4 h-4" />
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleUserActiveChange(user.id, true)}
-                                className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
-                              >
-                                <CheckCircle className="w-4 h-4" />
-                              </button>
+                            {!isUserApproved(user) && (
+                              <>
+                                <button 
+                                  onClick={() => handleUserAction(user.id, 'approve')}
+                                  className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </button>
+                                <button 
+                                  onClick={() => handleUserAction(user.id, 'reject')}
+                                  className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              </>
                             )}
                           </div>
                         </td>
@@ -821,85 +554,61 @@ export default function AdminDashboard() {
                 <table className="w-full">
                   <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Applicant</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Phone</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">License</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Driver</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Experience</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Availability</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Submitted</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {currentDriverApplications.map((driver) => (
+                    {currentDrivers.map((driver) => (
                       <tr key={driver.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">
-                              {driver.full_name || `${driver.first_name || ''} ${driver.last_name || ''}`.trim()}
-                            </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">{driver.email}</div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{getDriverDisplayName(driver)}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">{driver.email || driver.phone || '-'}</div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {driver.phone || '—'}
+                          {getDriverExperience(driver)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {driver.license_number || '—'}
+                          Full-time
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {(() => {
-                            const statusValue = String(driver.status ?? (driver.is_approved ? 'APPROVED' : 'PENDING'));
-                            const normalized = statusValue.trim().toLowerCase();
-                            const isApproved = normalized === 'approved';
-                            const isRejected = normalized === 'rejected';
-                            const badgeClass = isApproved
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                              : isRejected
-                              ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-                            return (
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${badgeClass}`}>
-                                {statusValue}
-                              </span>
-                            );
-                          })()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                          {driver.created_at ? new Date(driver.created_at).toLocaleDateString() : '—'}
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            driver.is_approved 
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                          }`}>
+                            {driver.is_approved ? 'Approved' : 'Pending'}
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
-                            <button
-                              onClick={() => {
-                                setSelectedDriver(driver);
-                                setShowDriverModal(true);
-                              }}
-                              className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            {(() => {
-                              const normalized = String(driver.status ?? '').trim().toLowerCase();
-                              const isApproved = normalized === 'approved';
-                              const isRejected = normalized === 'rejected';
-                              if (isApproved || isRejected) return null;
-                              return (
-                                <>
-                                  <button
-                                    onClick={() => handleDriverAction(driver.id, 'approve')}
-                                    className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
-                                  >
-                                    <CheckCircle className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDriverAction(driver.id, 'reject')}
-                                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                                  >
-                                    <XCircle className="w-4 h-4" />
-                                  </button>
-                                </>
-                              );
-                            })()}
+                            {!driver.is_approved && (
+                              <>
+                                <button 
+                                  onClick={() => handleDriverAction(driver.id, 'approve')}
+                                  className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </button>
+                                <button 
+                                  onClick={() => handleDriverAction(driver.id, 'review')}
+                                  className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button 
+                                  onClick={() => handleDriverAction(driver.id, 'reject')}
+                                  className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -909,10 +618,10 @@ export default function AdminDashboard() {
               </div>
               
               {/* Drivers Pagination */}
-              {driverApplications.length > itemsPerPage && (
+              {drivers.length > itemsPerPage && (
                 <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 dark:border-gray-700">
                   <div className="flex items-center text-sm text-gray-700 dark:text-gray-300">
-                    Showing {driverApplicationsStartIndex + 1} to {Math.min(driverApplicationsEndIndex, driverApplications.length)} of {driverApplications.length} applications
+                    Showing {driversStartIndex + 1} to {Math.min(driversEndIndex, drivers.length)} of {drivers.length} drivers
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
@@ -923,7 +632,7 @@ export default function AdminDashboard() {
                       <ChevronLeft className="w-5 h-5" />
                     </button>
                     
-                    {Array.from({ length: driverApplicationsTotalPages }, (_, i) => i + 1).map((page) => (
+                    {Array.from({ length: driversTotalPages }, (_, i) => i + 1).map((page) => (
                       <button
                         key={page}
                         onClick={() => goToDriversPage(page)}
@@ -939,145 +648,7 @@ export default function AdminDashboard() {
                     
                     <button
                       onClick={() => goToDriversPage(driversPage + 1)}
-                      disabled={driversPage === driverApplicationsTotalPages}
-                      className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-
-        {/* Drivers Management Tab */}
-        {activeTab === 'driversManagement' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-              <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Drivers</h3>
-                <button
-                  onClick={openCreateDriver}
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-                >
-                  Add Driver
-                </button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 dark:bg-gray-700">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Driver</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Phone</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Vehicle</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {currentDrivers.map((driver) => (
-                      <tr key={driver.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">{driver.name}</div>
-                            {driver.email && (
-                              <div className="text-sm text-gray-500 dark:text-gray-400">{driver.email}</div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {driver.phone || '—'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {[driver.vehicle_model, driver.vehicle_plate].filter(Boolean).join(' • ') || '—'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {(() => {
-                            const statusValue = String(driver.status ?? 'UNKNOWN');
-                            const normalized = statusValue.trim().toLowerCase();
-                            const badgeClass =
-                              normalized === 'active'
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                : normalized === 'busy'
-                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                : normalized === 'offline'
-                                ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-                                : normalized === 'suspended'
-                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                                : normalized === 'terminated'
-                                ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                                : normalized === 'on_hold'
-                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
-                            return (
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${badgeClass}`}>
-                                {statusValue}
-                              </span>
-                            );
-                          })()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                          {driver.created_at ? new Date(driver.created_at).toLocaleDateString() : '—'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => openEditDriver(driver)}
-                              className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDriverDelete(driver.id)}
-                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                            >
-                              <XCircle className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {drivers.length > itemsPerPage && (
-                <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center text-sm text-gray-700 dark:text-gray-300">
-                    Showing {driversStartIndex + 1} to {Math.min(driversEndIndex, drivers.length)} of {drivers.length} drivers
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => goToDriversMgmtPage(driversMgmtPage - 1)}
-                      disabled={driversMgmtPage === 1}
-                      className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-
-                    {Array.from({ length: driversTotalPages }, (_, i) => i + 1).map((page) => (
-                      <button
-                        key={page}
-                        onClick={() => goToDriversMgmtPage(page)}
-                        className={`px-3 py-1 text-sm rounded ${
-                          driversMgmtPage === page
-                            ? 'bg-red-600 text-white'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
-
-                    <button
-                      onClick={() => goToDriversMgmtPage(driversMgmtPage + 1)}
-                      disabled={driversMgmtPage === driversTotalPages}
+                      disabled={driversPage === driversTotalPages}
                       className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <ChevronRight className="w-5 h-5" />
@@ -1135,17 +706,15 @@ export default function AdminDashboard() {
 
         {/* User Detail Modal */}
         {showUserModal && selectedUser && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center overflow-y-auto px-4 pb-8 pt-24 sm:pt-28 sm:pb-12">
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full max-h-[calc(100vh-6rem)] overflow-y-auto p-6"
+              className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6"
             >
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  {userModalMode === 'edit' ? 'Edit User' : 'User Details'}
-                </h3>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">User Details</h3>
                 <button 
                   onClick={() => setShowUserModal(false)}
                   className="text-gray-400 hover:text-gray-600"
@@ -1156,296 +725,51 @@ export default function AdminDashboard() {
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</label>
-                  {userModalMode === 'edit' ? (
-                    <input
-                      value={userForm.full_name}
-                      onChange={(e) => setUserForm((prev) => ({ ...prev, full_name: e.target.value }))}
-                      className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
-                      placeholder="Full name"
-                    />
-                  ) : (
-                    <p className="text-gray-900 dark:text-white">{selectedUser.full_name || selectedUser.phone}</p>
-                  )}
+                  <p className="text-gray-900 dark:text-white">{getUserDisplayName(selectedUser)}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</label>
-                  {userModalMode === 'edit' ? (
-                    <input
-                      type="email"
-                      value={userForm.email}
-                      onChange={(e) => setUserForm((prev) => ({ ...prev, email: e.target.value }))}
-                      className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
-                      placeholder="Email address"
-                    />
-                  ) : (
-                    <p className="text-gray-900 dark:text-white">{selectedUser.email || '-'}</p>
-                  )}
+                  <p className="text-gray-900 dark:text-white">{selectedUser.email || selectedUser.phone || '-'}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Phone</label>
-                  {userModalMode === 'edit' ? (
-                    <input
-                      value={userForm.phone}
-                      onChange={(e) => setUserForm((prev) => ({ ...prev, phone: e.target.value }))}
-                      className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
-                      placeholder="Phone number"
-                    />
-                  ) : (
-                    <p className="text-gray-900 dark:text-white">{selectedUser.phone}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Role</label>
-                  {userModalMode === 'edit' ? (
-                    <input
-                      value={userForm.role}
-                      onChange={(e) => setUserForm((prev) => ({ ...prev, role: e.target.value }))}
-                      className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
-                      placeholder="Role"
-                    />
-                  ) : (
-                    <p className="text-gray-900 dark:text-white">{selectedUser.role}</p>
-                  )}
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Account Type</label>
+                  <p className="text-gray-900 dark:text-white">{getUserType(selectedUser)}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
-                  <p className="text-gray-900 dark:text-white">{selectedUser.is_active ? 'Active' : 'Inactive'}</p>
+                  <p className="text-gray-900 dark:text-white">{getUserStatusLabel(selectedUser)}</p>
                 </div>
-                {userFormError && (
-                  <div className="text-sm text-red-600 dark:text-red-400">{userFormError}</div>
-                )}
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Message</label>
+                  <p className="text-gray-900 dark:text-white">{selectedUser.message || 'No message provided'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Registration Date</label>
+                  <p className="text-gray-900 dark:text-white">{formatDate(selectedUser.created_at)}</p>
+                </div>
               </div>
-              <div className="flex space-x-3 mt-6">
-                {userModalMode === 'edit' ? (
-                  <>
-                    <button
-                      onClick={() => {
-                        setUserModalMode('view');
-                        setUserForm({
-                          full_name: selectedUser.full_name || '',
-                          email: selectedUser.email || '',
-                          phone: selectedUser.phone || '',
-                          role: selectedUser.role || '',
-                        });
-                        setUserFormError(null);
-                      }}
-                      className="flex-1 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 py-2 px-4 rounded-lg font-medium transition-colors duration-200 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleUserUpdate}
-                      disabled={userFormSaving || !userForm.phone}
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {userFormSaving ? 'Saving…' : 'Save'}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => setUserModalMode('edit')}
-                      className="flex-1 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 py-2 px-4 rounded-lg font-medium transition-colors duration-200 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleUserDelete(selectedUser.id, true)}
-                      className="flex-1 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 py-2 px-4 rounded-lg font-medium transition-colors duration-200 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    >
-                      Delete
-                    </button>
-                    {selectedUser.is_active ? (
-                      <button
-                        onClick={() => {
-                          handleUserActiveChange(selectedUser.id, false);
-                          setShowUserModal(false);
-                        }}
-                        className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200"
-                      >
-                        Deactivate
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          handleUserActiveChange(selectedUser.id, true);
-                          setShowUserModal(false);
-                        }}
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200"
-                      >
-                        Activate
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-        {showDriverMgmtModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center overflow-y-auto px-4 pb-8 pt-24 sm:pt-28 sm:pb-12">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full max-h-[calc(100vh-6rem)] overflow-y-auto p-6"
-            >
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  {driverMgmtMode === 'create' ? 'Add Driver' : 'Driver Details'}
-                </h3>
-                <button
-                  onClick={() => setShowDriverMgmtModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <XCircle className="w-6 h-6" />
-                </button>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</label>
-                  <input
-                    value={driverMgmtForm.name}
-                    onChange={(e) => setDriverMgmtForm((prev) => ({ ...prev, name: e.target.value }))}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Phone</label>
-                  <input
-                    value={driverMgmtForm.phone}
-                    onChange={(e) => setDriverMgmtForm((prev) => ({ ...prev, phone: e.target.value }))}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Vehicle Plate</label>
-                  <input
-                    value={driverMgmtForm.vehicle_plate}
-                    onChange={(e) => setDriverMgmtForm((prev) => ({ ...prev, vehicle_plate: e.target.value.toUpperCase() }))}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Vehicle Model</label>
-                  <input
-                    value={driverMgmtForm.vehicle_model}
-                    onChange={(e) => setDriverMgmtForm((prev) => ({ ...prev, vehicle_model: e.target.value }))}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
-                  <select
-                    value={driverMgmtForm.status}
-                    onChange={(e) => setDriverMgmtForm((prev) => ({ ...prev, status: e.target.value }))}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
+              {!isUserApproved(selectedUser) && (
+                <div className="flex space-x-3 mt-6">
+                  <button 
+                    onClick={() => {
+                      handleUserAction(selectedUser.id, 'approve');
+                      setShowUserModal(false);
+                    }}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200"
                   >
-                    {driverStatusOptions.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
-                      </option>
-                    ))}
-                  </select>
+                    Approve
+                  </button>
+                  <button 
+                    onClick={() => {
+                      handleUserAction(selectedUser.id, 'reject');
+                      setShowUserModal(false);
+                    }}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200"
+                  >
+                    Reject
+                  </button>
                 </div>
-                {driverMgmtError && (
-                  <div className="text-sm text-red-600 dark:text-red-400">{driverMgmtError}</div>
-                )}
-              </div>
-              <div className="flex space-x-3 mt-6">
-                <button
-                  onClick={handleDriverMgmtSave}
-                  disabled={driverMgmtSaving}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {driverMgmtSaving ? 'Saving…' : 'Save'}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-        {showDriverModal && selectedDriver && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center overflow-y-auto px-4 pb-8 pt-24 sm:pt-28 sm:pb-12">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full max-h-[calc(100vh-6rem)] overflow-y-auto p-6"
-            >
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Driver Application</h3>
-                <button
-                  onClick={() => setShowDriverModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <XCircle className="w-6 h-6" />
-                </button>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</label>
-                  <p className="text-gray-900 dark:text-white">
-                    {selectedDriver.full_name ||
-                      `${selectedDriver.first_name || ''} ${selectedDriver.last_name || ''}`.trim() ||
-                      '—'}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Phone</label>
-                  <p className="text-gray-900 dark:text-white">{selectedDriver.phone || '—'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</label>
-                  <p className="text-gray-900 dark:text-white">{selectedDriver.email || '—'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">License Number</label>
-                  <p className="text-gray-900 dark:text-white">{selectedDriver.license_number || '—'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
-                  <p className="text-gray-900 dark:text-white">
-                    {String(selectedDriver.status ?? (selectedDriver.is_approved ? 'APPROVED' : 'PENDING'))}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Submitted</label>
-                  <p className="text-gray-900 dark:text-white">
-                    {selectedDriver.created_at ? new Date(selectedDriver.created_at).toLocaleString() : '—'}
-                  </p>
-                </div>
-                {selectedDriver.message && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Message</label>
-                    <p className="text-gray-900 dark:text-white">{selectedDriver.message}</p>
-                  </div>
-                )}
-              </div>
-              {(() => {
-                const normalized = String(selectedDriver.status ?? '').trim().toLowerCase();
-                const isApproved = normalized === 'approved';
-                const isRejected = normalized === 'rejected';
-                if (isApproved || isRejected) return null;
-                return (
-                  <div className="flex space-x-3 mt-6">
-                    <button
-                      onClick={() => handleDriverAction(selectedDriver.id, 'approve')}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleDriverAction(selectedDriver.id, 'reject')}
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                );
-              })()}
+              )}
             </motion.div>
           </div>
         )}

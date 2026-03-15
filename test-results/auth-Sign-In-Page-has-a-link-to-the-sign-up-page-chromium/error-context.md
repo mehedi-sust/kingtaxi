@@ -1,0 +1,172 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e7] [cursor=pointer]:
+    - generic [ref=e10]:
+      - text: Compiling
+      - generic [ref=e11]:
+        - generic [ref=e12]: .
+        - generic [ref=e13]: .
+        - generic [ref=e14]: .
+  - alert [ref=e15]
+  - navigation [ref=e16]:
+    - generic [ref=e19]:
+      - link "King Taxi Logo" [ref=e21] [cursor=pointer]:
+        - /url: /
+        - img "King Taxi Logo" [ref=e22]
+      - generic [ref=e24]:
+        - link "Home" [ref=e26] [cursor=pointer]:
+          - /url: /
+          - text: Home
+        - link "Book Now" [ref=e28] [cursor=pointer]:
+          - /url: /book
+          - text: Book Now
+        - link "About Us" [ref=e30] [cursor=pointer]:
+          - /url: /about
+          - text: About Us
+        - link "Picture Gallery" [ref=e32] [cursor=pointer]:
+          - /url: /gallery
+          - text: Picture Gallery
+        - link "Join Our Driving Team" [ref=e34] [cursor=pointer]:
+          - /url: /driver-application
+          - text: Join Our Driving Team
+      - generic [ref=e35]:
+        - button "Toggle theme" [ref=e36] [cursor=pointer]:
+          - img
+          - generic [ref=e37]: Toggle theme
+        - link "Sign In" [ref=e38] [cursor=pointer]:
+          - /url: /signin
+        - link "Sign Up" [ref=e39] [cursor=pointer]:
+          - /url: /signup
+  - main [ref=e40]:
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - heading "Welcome Back" [level=1] [ref=e44]
+        - paragraph [ref=e45]: Sign in to your King Taxi account to book rides, manage your preferences, and access exclusive member benefits.
+      - generic [ref=e46]:
+        - generic [ref=e47]:
+          - generic [ref=e48]:
+            - heading "Sign In" [level=2] [ref=e49]
+            - paragraph [ref=e50]: Enter your credentials to access your account
+          - generic [ref=e51]:
+            - generic [ref=e52]:
+              - generic [ref=e53]: Email or Phone
+              - generic [ref=e54]:
+                - img [ref=e55]
+                - textbox "Email or Phone" [ref=e58]:
+                  - /placeholder: Enter your email or phone
+            - generic [ref=e59]:
+              - generic [ref=e60]: Password
+              - generic [ref=e61]:
+                - img [ref=e62]
+                - textbox "Password" [ref=e65]:
+                  - /placeholder: Enter your password
+                - button [ref=e66] [cursor=pointer]:
+                  - img [ref=e67]
+            - generic [ref=e70]:
+              - generic [ref=e71]:
+                - checkbox "Remember me" [ref=e72]
+                - generic [ref=e73]: Remember me
+              - link "Forgot password?" [ref=e74] [cursor=pointer]:
+                - /url: /forgot-password
+            - button "Sign In" [ref=e75] [cursor=pointer]:
+              - text: Sign In
+              - img [ref=e76]
+          - paragraph [ref=e79]:
+            - text: Don't have an account?
+            - link "Sign up here" [ref=e80] [cursor=pointer]:
+              - /url: /signup
+          - generic [ref=e81]:
+            - heading "Demo Credentials" [level=3] [ref=e82]
+            - generic [ref=e83]:
+              - paragraph [ref=e84]:
+                - strong [ref=e85]: "Admin Email:"
+                - text: admin@kingtaxi.co.uk
+              - paragraph [ref=e86]:
+                - strong [ref=e87]: "Admin Password:"
+                - text: Admin123
+              - paragraph [ref=e88]: Or use any email/password for regular user
+        - generic [ref=e89]:
+          - generic [ref=e93]:
+            - heading "Premium Service" [level=3] [ref=e94]
+            - paragraph [ref=e95]: Available 24/7
+          - generic [ref=e96]:
+            - heading "Why Choose King Taxi?" [level=3] [ref=e97]
+            - generic [ref=e98]:
+              - generic [ref=e102]:
+                - heading "Reliable Service" [level=4] [ref=e103]
+                - paragraph [ref=e104]: Punctual and dependable transportation
+              - generic [ref=e108]:
+                - heading "Professional Drivers" [level=4] [ref=e109]
+                - paragraph [ref=e110]: CRB checked and experienced drivers
+              - generic [ref=e114]:
+                - heading "Modern Fleet" [level=4] [ref=e115]
+                - paragraph [ref=e116]: Clean and well-maintained vehicles
+              - generic [ref=e120]:
+                - heading "Competitive Pricing" [level=4] [ref=e121]
+                - paragraph [ref=e122]: Fair and transparent pricing
+  - contentinfo [ref=e123]:
+    - generic [ref=e124]:
+      - generic [ref=e125]:
+        - generic [ref=e126]:
+          - img "King Taxi Logo" [ref=e128]
+          - paragraph [ref=e129]: Premium taxi service in the UK offering reliable, punctual, and quality transportation with trusted drivers and modern vehicles.
+        - generic [ref=e130]:
+          - heading "Contact Us" [level=4] [ref=e131]
+          - generic [ref=e132]:
+            - generic [ref=e133]:
+              - img [ref=e134]
+              - generic [ref=e137]: Ashford, Kent, UK
+            - generic [ref=e138]:
+              - img [ref=e139]
+              - link "+44 01233 367 357" [ref=e141] [cursor=pointer]:
+                - /url: tel:+4401233367357
+            - generic [ref=e142]:
+              - img [ref=e143]
+              - generic [ref=e146]: info@kingtaxi.co.uk
+        - generic [ref=e147]:
+          - heading "Quick Links" [level=4] [ref=e148]
+          - generic [ref=e149]:
+            - link "Home" [ref=e150] [cursor=pointer]:
+              - /url: /
+            - link "About Us" [ref=e151] [cursor=pointer]:
+              - /url: /about
+            - link "Services" [ref=e152] [cursor=pointer]:
+              - /url: /services
+            - link "Book Now" [ref=e153] [cursor=pointer]:
+              - /url: /book
+            - link "Gallery" [ref=e154] [cursor=pointer]:
+              - /url: /gallery
+            - link "Contact" [ref=e155] [cursor=pointer]:
+              - /url: /contact
+        - generic [ref=e156]:
+          - heading "Follow Us" [level=4] [ref=e157]
+          - generic [ref=e158]:
+            - link "Facebook" [ref=e159] [cursor=pointer]:
+              - /url: https://www.facebook.com/KingTaxiAshford/
+              - img [ref=e160]
+            - link "Twitter" [ref=e162] [cursor=pointer]:
+              - /url: https://x.com/kingtaxiashford
+              - img [ref=e163]
+            - link "Instagram" [ref=e165] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e166]
+            - link "YouTube" [ref=e169] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e170]
+          - generic [ref=e173]:
+            - heading "Operating Hours" [level=5] [ref=e174]
+            - generic [ref=e175]:
+              - paragraph [ref=e176]: 24/7 Service Available
+              - paragraph [ref=e177]: Emergency Bookings Welcome
+      - generic [ref=e179]:
+        - paragraph [ref=e180]: © 2026 King Taxi. All rights reserved.
+        - generic [ref=e181]:
+          - link "Privacy Policy" [ref=e182] [cursor=pointer]:
+            - /url: /privacy
+          - link "Terms of Service" [ref=e183] [cursor=pointer]:
+            - /url: /terms
+          - link "Cookie Policy" [ref=e184] [cursor=pointer]:
+            - /url: /cookies
+```

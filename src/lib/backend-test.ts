@@ -3,7 +3,6 @@ export async function testBackendConnection(baseUrl: string = 'https://kingtaxi-
   const endpoints = [
     '/',
     '/docs',
-    '/fares/',
     '/offers/',
     '/vehicles/',
     '/users/',

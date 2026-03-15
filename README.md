@@ -75,6 +75,45 @@ A modern, responsive web application for King Taxi, a UK-based premium taxi serv
 6. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
 
+### Frontend Tests
+
+From the project root, run one of the following commands:
+
+Unit tests (Vitest):
+```bash
+npm run test
+```
+
+Run unit tests once:
+```bash
+npm run test:run
+```
+
+Unit test UI:
+```bash
+npm run test:ui
+```
+
+Unit test coverage:
+```bash
+npm run test:coverage
+```
+
+E2E tests (Playwright):
+```bash
+npm run test:e2e
+```
+
+E2E test UI:
+```bash
+npm run test:e2e:ui
+```
+
+E2E test report:
+```bash
+npm run test:e2e:report
+```
+
 ### Database Setup
 
 The application uses PostgreSQL 17 running in a Docker container. The database schema includes:

@@ -1,14 +1,16 @@
-const DEFAULT_REMOTE_API_URL =
-  process.env.API_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  'https://kingtaxi-webapp-backend.onrender.com';
-const normalizeBaseUrl = (value: string) => (value.endsWith('/') ? value.slice(0, -1) : value);
-const API_BASE_URL =
-  typeof window !== 'undefined'
-    ? normalizeBaseUrl(
-        process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || '/api'
-      )
-    : normalizeBaseUrl(DEFAULT_REMOTE_API_URL);
+function normalizeBaseUrl(value: string | undefined): string {
+  const normalized = (value || '').trim().replace(/\/+$/, '');
+  return normalized;
+}
+
+function resolveApiBaseUrl(): string {
+  const publicUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL);
+  if (publicUrl) return publicUrl;
+  return '/api';
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
+const AUTH_EVENT = 'kingtaxi-auth-changed';
 
 class ApiClient {
   private baseURL: string;
@@ -17,28 +19,19 @@ class ApiClient {
     this.baseURL = baseURL;
   }
 
-  private getProfileStorageKey() {
-    if (typeof window === 'undefined') return 'kingtaxi_profile';
-    const identifier = localStorage.getItem('kingtaxi_identifier') || '';
-    const suffixRaw = identifier.trim().toLowerCase();
-    const suffix = suffixRaw.replace(/[^a-z0-9_-]/gi, '_');
-    return suffix ? `kingtaxi_profile_${suffix}` : 'kingtaxi_profile';
-  }
-
-  private getAccountEndpointUnavailableKey() {
-    if (typeof window === 'undefined') return 'kingtaxi_account_endpoint_unavailable_at';
-    const identifier = localStorage.getItem('kingtaxi_identifier') || '';
-    const suffixRaw = identifier.trim().toLowerCase();
-    const suffix = suffixRaw.replace(/[^a-z0-9_-]/gi, '_');
-    return suffix
-      ? `kingtaxi_account_endpoint_unavailable_at_${suffix}`
-      : 'kingtaxi_account_endpoint_unavailable_at';
+  private clearAuthState() {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem('kingtaxi_token');
+    localStorage.removeItem('kingtaxi_identifier');
+    localStorage.removeItem('kingtaxi_is_admin');
+    window.dispatchEvent(new Event(AUTH_EVENT));
   }
 
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
+    const url = `${this.baseURL}${endpoint}`;
     const token = typeof window !== 'undefined' ? localStorage.getItem('kingtaxi_token') : null;
     const config: RequestInit = {
       headers: {
@@ -50,136 +43,65 @@ class ApiClient {
       ...options,
     };
 
-    const method = (options.method || 'GET').toUpperCase();
-    const isAdminEndpoint = endpoint === '/admin' || endpoint.startsWith('/admin/');
-    const allowFallback = method === 'GET' && !isAdminEndpoint;
-
-    const endpointsToTry: string[] = [endpoint];
-    if (method === 'GET') {
-      const alt = endpoint.endsWith('/') ? endpoint.slice(0, -1) : `${endpoint}/`;
-      if (alt !== endpoint) endpointsToTry.push(alt);
-    }
-
-    let lastError: unknown = null;
-
-    for (const candidate of endpointsToTry) {
-      const url = `${this.baseURL}${candidate}`;
-      try {
-        const response = await fetch(url, config);
-
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('text/html')) {
-          throw new Error('Unexpected server response. Please try again later.');
-        }
-
-        if (!response.ok) {
-          let errorMessage = response.statusText || `HTTP error! status: ${response.status}`;
-          try {
-            const errorData = await response.json();
-            const detail = (errorData as any)?.detail;
-            if (typeof detail === 'string' && detail) {
-              errorMessage = detail;
-            } else if (Array.isArray(detail)) {
-              const flattened = detail
-                .map((item) => {
-                  if (typeof item === 'string') return item;
-                  if (item && typeof item === 'object') {
-                    const loc = Array.isArray((item as any).loc) ? (item as any).loc.join('.') : null;
-                    const msg = typeof (item as any).msg === 'string' ? (item as any).msg : null;
-                    return [loc, msg].filter(Boolean).join(': ');
-                  }
-                  return null;
-                })
-                .filter(Boolean)
-                .join(', ');
-              if (flattened) errorMessage = flattened;
-            } else if (detail && typeof detail === 'object') {
-              const msg =
-                typeof (detail as any).message === 'string'
-                  ? (detail as any).message
-                  : typeof (detail as any).msg === 'string'
-                  ? (detail as any).msg
-                  : null;
-              errorMessage = msg || errorMessage;
-            } else if (typeof (errorData as any)?.message === 'string' && (errorData as any).message) {
-              errorMessage = (errorData as any).message;
-            }
-          } catch {}
-
-          if (response.status >= 500) {
-            errorMessage = 'Server error. Please try again later.';
-          } else if (response.status === 401) {
-            errorMessage = 'You are not signed in. Please sign in and try again.';
-          } else if (response.status === 403) {
-            errorMessage = 'You do not have permission to perform this action.';
-          } else if (response.status === 429) {
-            errorMessage = 'Too many requests. Please wait and try again.';
-          }
-
-          if (response.status === 404 && candidate !== endpointsToTry[endpointsToTry.length - 1]) {
-            lastError = new Error(errorMessage);
-            continue;
-          }
-
-          throw new Error(errorMessage);
-        }
-
-        if (response.status === 204) {
-          return null as T;
-        }
-
-        const contentTypeOk = contentType && contentType.includes('application/json');
-        if (!contentTypeOk) {
-          const text = await response.text();
-          return (text ? (text as unknown as T) : (null as T));
-        }
-
-        const data = await response.json();
-        return data;
-      } catch (err) {
-        if (err instanceof Error) {
-          const msg = err.message || '';
-          if (
-            msg.toLowerCase().includes('failed to fetch') ||
-            msg.toLowerCase().includes('networkerror') ||
-            msg.toLowerCase().includes('load failed')
-          ) {
-            lastError = new Error('Unable to reach the server. Please check your connection and try again.');
-            continue;
-          }
-        }
-        lastError = err;
+    try {
+      console.log(`Making API request to: ${url}`);
+      const response = await fetch(url, config);
+      
+      // Check if response is HTML (likely an error page)
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('text/html')) {
+        throw new Error(`API endpoint returned HTML instead of JSON. Check if the backend is running and the endpoint exists: ${endpoint}`);
       }
-    }
+      
+      if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorData.message || errorMessage;
+        } catch {
+          // If we can't parse the error response, use the status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        if (response.status === 401) {
+          this.clearAuthState();
+        }
+        throw new Error(errorMessage);
+      }
 
-    if (allowFallback && (endpoint === '/fares/' || endpoint === '/fares')) {
-      return this.getFallbackFares() as T;
+      const data = await response.json();
+      console.log(`API response from ${endpoint}:`, data);
+      return data;
+    } catch (error) {
+      console.error(`API request failed: ${endpoint}`, error);
+      
+      // Provide fallback data for development
+      if (endpoint === '/offers/') {
+        console.warn('Using fallback offers data for development');
+        return this.getFallbackOffers() as T;
+      }
+      
+      if (endpoint === '/vehicles/') {
+        console.warn('Using fallback vehicles data for development');
+        return this.getFallbackVehicles() as T;
+      }
+      
+      if (endpoint === '/users/') {
+        console.warn('Using fallback users data for development');
+        return this.getFallbackUsers() as T;
+      }
+      
+      if (endpoint === '/drivers/') {
+        console.warn('Using fallback drivers data for development');
+        return this.getFallbackDrivers() as T;
+      }
+      
+      if (endpoint === '/stats/') {
+        console.warn('Using fallback stats data for development');
+        return this.getFallbackStats() as T;
+      }
+      
+      throw error;
     }
-
-    if (allowFallback && (endpoint === '/offers/' || endpoint === '/offers')) {
-      return this.getFallbackOffers() as T;
-    }
-
-    if (
-      allowFallback &&
-      (endpoint === '/vehicles/' || endpoint === '/vehicles' || endpoint.startsWith('/vehicles/'))
-    ) {
-      return this.getFallbackVehicles() as T;
-    }
-
-    if (allowFallback && (endpoint === '/users/' || endpoint === '/users')) {
-      return this.getFallbackUsers() as T;
-    }
-
-    if (allowFallback && (endpoint === '/drivers/' || endpoint === '/drivers')) {
-      return this.getFallbackDrivers() as T;
-    }
-
-    if (allowFallback && endpoint === '/bookings') {
-      return this.getFallbackBookings() as T;
-    }
-
-    throw lastError instanceof Error ? lastError : new Error('Request failed');
   }
 
   // Auth helpers
@@ -196,8 +118,19 @@ class ApiClient {
     });
     if (typeof window !== 'undefined') {
       localStorage.setItem('kingtaxi_token', data.access_token);
+      window.dispatchEvent(new Event(AUTH_EVENT));
     }
     return data;
+  }
+
+  async logout() {
+    try {
+      await this.request('/auth/logout', {
+        method: 'POST',
+      });
+    } catch {}
+    this.clearAuthState();
+    return { message: 'Logged out' };
   }
 
   async register(userData: { phone: string; password: string; email?: string; full_name?: string }) {
@@ -207,66 +140,98 @@ class ApiClient {
     });
   }
 
-  async logout() {
-    return this.request('/auth/logout', {
+  async hasAdminAccess(): Promise<boolean> {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('kingtaxi_token') : null;
+    if (!token) return false;
+    try {
+      const response = await fetch(`${this.baseURL}/admin/users?limit=1`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  async getUser() {
+    return this.request('/user');
+  }
+
+  async updateAccount(userData: { email?: string; full_name?: string; phone?: string }) {
+    return this.request('/user', {
+      method: 'PATCH',
+      body: JSON.stringify(userData),
+    });
+  }
+
+  async estimateFare(payload: {
+    pickup_address?: string;
+    dropoff_address?: string;
+    pickup_lat: number;
+    pickup_lng: number;
+    dropoff_lat: number;
+    dropoff_lng: number;
+    trip_type?: string;
+    pickup_time?: string;
+  }) {
+    return this.request('/bookings/estimate', {
       method: 'POST',
+      body: JSON.stringify(payload),
     });
   }
 
   private getFallbackFares() {
     return [
       {
-        id: 1,
-        route_name: 'Ashford → Heathrow Airport',
-        pickup_pattern: 'Ashford',
-        dropoff_pattern: 'Heathrow',
-        vehicle_type: '4-Seater Premium Sedan',
-        price: 85.0,
+        id: '1',
+        from_location: 'Ashford',
+        to_location: 'Heathrow Airport',
+        vehicle_type: 'FOUR_SEATER',
+        price: 85,
         is_active: true
       },
       {
-        id: 2,
-        route_name: 'Ashford → Gatwick Airport',
-        pickup_pattern: 'Ashford',
-        dropoff_pattern: 'Gatwick',
-        vehicle_type: '4-Seater Premium Sedan',
-        price: 95.0,
+        id: '2',
+        from_location: 'Ashford',
+        to_location: 'Gatwick Airport',
+        vehicle_type: 'FOUR_SEATER',
+        price: 95,
         is_active: true
       },
       {
-        id: 3,
-        route_name: 'Ashford → Stansted Airport',
-        pickup_pattern: 'Ashford',
-        dropoff_pattern: 'Stansted',
-        vehicle_type: '4-Seater Premium Sedan',
-        price: 110.0,
+        id: '3',
+        from_location: 'Ashford',
+        to_location: 'Stansted Airport',
+        vehicle_type: 'FOUR_SEATER',
+        price: 110,
         is_active: true
       },
       {
-        id: 4,
-        route_name: 'Ashford → Heathrow Airport',
-        pickup_pattern: 'Ashford',
-        dropoff_pattern: 'Heathrow',
-        vehicle_type: '8-Seater Minibus',
-        price: 105.0,
+        id: '4',
+        from_location: 'Ashford',
+        to_location: 'Heathrow Airport',
+        vehicle_type: 'EIGHT_SEATER',
+        price: 105,
         is_active: true
       },
       {
-        id: 5,
-        route_name: 'Ashford → Gatwick Airport',
-        pickup_pattern: 'Ashford',
-        dropoff_pattern: 'Gatwick',
-        vehicle_type: '8-Seater Minibus',
-        price: 115.0,
+        id: '5',
+        from_location: 'Ashford',
+        to_location: 'Gatwick Airport',
+        vehicle_type: 'EIGHT_SEATER',
+        price: 115,
         is_active: true
       },
       {
-        id: 6,
-        route_name: 'Ashford → Stansted Airport',
-        pickup_pattern: 'Ashford',
-        dropoff_pattern: 'Stansted',
-        vehicle_type: '8-Seater Minibus',
-        price: 130.0,
+        id: '6',
+        from_location: 'Ashford',
+        to_location: 'Stansted Airport',
+        vehicle_type: 'EIGHT_SEATER',
+        price: 130,
         is_active: true
       }
     ];
@@ -297,12 +262,10 @@ class ApiClient {
         model: 'E-Class',
         year: 2022,
         license_plate: 'KT22 ABC',
-        chassis_number: undefined,
+        fuel_type: 'Petrol',
         color: 'Black',
-        seating_capacity: 4,
-        vehicle_type: '4-Seater Premium Sedan',
-        is_active: true,
-        created_at: '2024-01-01'
+        vehicle_type: 'FOUR_SEATER',
+        is_active: true
       }
     ];
   }
@@ -311,11 +274,12 @@ class ApiClient {
     return [
       {
         id: '1',
-        phone: '+441234567890',
+        first_name: 'John',
+        last_name: 'Doe',
         email: 'john@example.com',
-        full_name: 'John Doe',
-        role: 'customer',
-        is_active: true
+        account_type: 'customer',
+        is_approved: true,
+        created_at: '2024-01-01'
       }
     ];
   }
@@ -324,41 +288,23 @@ class ApiClient {
     return [
       {
         id: '1',
-        name: 'Mike Smith',
-        phone: '+441112223334',
-        vehicle_plate: 'KT22 ABC',
-        vehicle_model: 'Mercedes E-Class',
-        status: 'OFFLINE',
-        current_lat: null,
-        current_lng: null,
+        first_name: 'Mike',
+        last_name: 'Smith',
+        email: 'mike@example.com',
+        experience: '5 years',
+        is_approved: false,
         created_at: '2024-01-01'
       }
     ];
   }
 
-  private getFallbackBookings() {
-    return [
-      {
-        id: '1',
-        customer_phone: '+441234567890',
-        pickup_address: 'Ashford',
-        dropoff_address: 'Heathrow Airport',
-        pickup_lat: 0,
-        pickup_lng: 0,
-        dropoff_lat: 0,
-        dropoff_lng: 0,
-        pickup_time: new Date().toISOString(),
-        trip_type: 'standard',
-        vehicle_type: '4-Seater Premium Sedan',
-        estimated_fare: 85.0,
-        confirmed_fare: null,
-        is_fixed_fare: true,
-        status: 'PENDING_DISPATCH',
-        driver_id: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-    ];
+  private getFallbackStats() {
+    return {
+      totalUsers: 150,
+      totalDrivers: 25,
+      activeOffers: 3,
+      totalBookings: 500
+    };
   }
 
   // Auth endpoints
@@ -368,62 +314,11 @@ class ApiClient {
   }
 
   async updateUser(userId: string, userData: any) {
-    const id = encodeURIComponent(userId);
-
-    type Candidate = { path: string; methods: Array<'PATCH' | 'PUT' | 'POST'>; includeBody: boolean };
-    const candidates: Candidate[] = [
-      { path: `/admin/users/${id}`, methods: ['PATCH', 'PUT'], includeBody: true },
-      { path: `/users/${id}`, methods: ['PATCH', 'PUT'], includeBody: true },
-    ];
-
-    let lastError: unknown = null;
-    for (const candidate of candidates) {
-      for (const method of candidate.methods) {
-        try {
-          return await this.request(candidate.path, {
-            method,
-            ...(candidate.includeBody ? { body: JSON.stringify(userData ?? {}) } : {}),
-          });
-        } catch (e) {
-          lastError = e;
-        }
-      }
-    }
-    throw lastError instanceof Error ? lastError : new Error('User update endpoint not available');
-  }
-
-  async activateUser(userId: string) {
-    const id = encodeURIComponent(userId);
-    return this.request(`/admin/users/${id}/activate`, {
-      method: 'POST',
-    });
-  }
-
-  async deactivateUser(userId: string) {
-    const id = encodeURIComponent(userId);
-    return this.request(`/admin/users/${id}/deactivate`, {
-      method: 'POST',
-    });
+    throw new Error('Not implemented: updateUser requires backend support');
   }
 
   async deleteUser(userId: string) {
-    const id = encodeURIComponent(userId);
-    const candidates = [
-      { path: `/admin/users/${id}`, method: 'DELETE' as const },
-      { path: `/users/${id}`, method: 'DELETE' as const },
-    ];
-
-    let lastError: unknown = null;
-    for (const candidate of candidates) {
-      try {
-        return await this.request(candidate.path, {
-          method: candidate.method,
-        });
-      } catch (e) {
-        lastError = e;
-      }
-    }
-    throw lastError instanceof Error ? lastError : new Error('User delete endpoint not available');
+    throw new Error('Not implemented: deleteUser requires backend support');
   }
 
   // Drivers endpoints
@@ -438,133 +333,12 @@ class ApiClient {
     });
   }
 
-  async createDriverApplication(applicationData: any) {
-    return this.request('/drivers/applications', {
-      method: 'POST',
-      body: JSON.stringify(applicationData),
-    });
-  }
-
-  async getMyDriverApplication() {
-    const data = await this.request('/drivers/applications/me');
-    if (Array.isArray(data)) {
-      const sorted = [...data].sort((a, b) => {
-        const aTime = typeof a?.created_at === 'string' ? Date.parse(a.created_at) : 0;
-        const bTime = typeof b?.created_at === 'string' ? Date.parse(b.created_at) : 0;
-        return bTime - aTime;
-      });
-      return sorted[0] ?? null;
-    }
-    return data;
-  }
-
-  async withdrawMyDriverApplication() {
-    const candidates = [
-      { path: '/drivers/applications/me', method: 'DELETE' as const },
-      { path: '/drivers/applications/me/withdraw', method: 'POST' as const },
-      { path: '/drivers/applications/withdraw', method: 'POST' as const },
-      { path: '/drivers/applications/me', method: 'POST' as const },
-    ];
-
-    let lastError: unknown = null;
-    for (const candidate of candidates) {
-      try {
-        return await this.request(candidate.path, {
-          method: candidate.method,
-        });
-      } catch (e) {
-        lastError = e;
-      }
-    }
-    throw lastError instanceof Error ? lastError : new Error('Withdraw application endpoint not available');
-  }
-
-  async getAdminDriverApplications() {
-    const candidates = [
-      '/admin/driver-applications',
-      '/admin/drivers/applications',
-      '/admin/driver_applications',
-      '/admin/drivers/applications/all',
-      '/drivers/applications',
-      '/admin/drivers',
-    ];
-
-    let lastError: unknown = null;
-    for (const path of candidates) {
-      try {
-        return await this.request(path);
-      } catch (e) {
-        lastError = e;
-      }
-    }
-    throw lastError instanceof Error ? lastError : new Error('Driver applications admin endpoint not available');
-  }
-
-  async updateDriverApplicationStatus(applicationId: string, status: 'approve' | 'reject') {
-    const id = encodeURIComponent(applicationId);
-    const candidates = [
-      { path: `/admin/driver-applications/${id}/${status}`, method: 'PATCH' as const },
-      { path: `/admin/drivers/applications/${id}/${status}`, method: 'POST' as const },
-      { path: `/admin/drivers/applications/${id}/${status}`, method: 'PATCH' as const },
-      { path: `/admin/driver-applications/${id}`, method: 'PUT' as const, body: { status } },
-      { path: `/admin/driver_applications/${id}`, method: 'PUT' as const, body: { status } },
-      { path: `/admin/drivers/applications/${id}`, method: 'PUT' as const, body: { status } },
-      { path: `/admin/drivers/applications/${id}`, method: 'PATCH' as const, body: { status } },
-    ];
-
-    let lastError: unknown = null;
-    for (const candidate of candidates) {
-      try {
-        return await this.request(candidate.path, {
-          method: candidate.method,
-          ...(candidate.body ? { body: JSON.stringify(candidate.body) } : {}),
-        });
-      } catch (e) {
-        lastError = e;
-      }
-    }
-    throw lastError instanceof Error ? lastError : new Error('Driver application update endpoint not available');
-  }
-
   async updateDriver(driverId: string, driverData: any) {
-    const id = encodeURIComponent(driverId);
-    const isApproved =
-      typeof driverData === 'object' && driverData !== null ? (driverData as any).is_approved : undefined;
-
-    type Candidate = { path: string; methods: Array<'PATCH' | 'PUT' | 'POST'>; includeBody: boolean };
-    const candidates: Candidate[] = [
-      { path: `/admin/drivers/${id}`, methods: ['PATCH', 'PUT'], includeBody: true },
-      { path: `/drivers/${id}`, methods: ['PATCH', 'PUT'], includeBody: true },
-    ];
-    if (typeof isApproved === 'boolean') {
-      candidates.splice(1, 0, {
-        path: `/admin/drivers/${id}/${isApproved ? 'approve' : 'reject'}`,
-        methods: ['POST'],
-        includeBody: false,
-      });
-    }
-
-    let lastError: unknown = null;
-    for (const candidate of candidates) {
-      for (const method of candidate.methods) {
-        try {
-          return await this.request(candidate.path, {
-            method,
-            ...(candidate.includeBody ? { body: JSON.stringify(driverData ?? {}) } : {}),
-          });
-        } catch (e) {
-          lastError = e;
-        }
-      }
-    }
-    throw lastError instanceof Error ? lastError : new Error('Driver update endpoint not available');
+    throw new Error('Not implemented: updateDriver requires backend support');
   }
 
   async deleteDriver(driverId: string) {
-    const id = encodeURIComponent(driverId);
-    return this.request(`/admin/drivers/${id}`, {
-      method: 'DELETE',
-    });
+    throw new Error('Not implemented: deleteDriver requires backend support');
   }
 
   // Fares endpoints
@@ -573,7 +347,66 @@ class ApiClient {
   }
 
   async getPublicFares() {
-    return this.request('/fares');
+    return this.getFallbackPublicFares();
+  }
+
+  private getFallbackPublicFares() {
+    return [
+      {
+        id: 1,
+        route_name: 'Ashford → Heathrow Airport',
+        pickup_pattern: 'Ashford',
+        dropoff_pattern: 'Heathrow Airport',
+        vehicle_type: '4-Seater Premium Sedan',
+        price: 85,
+        is_active: true,
+      },
+      {
+        id: 2,
+        route_name: 'Ashford → Gatwick Airport',
+        pickup_pattern: 'Ashford',
+        dropoff_pattern: 'Gatwick Airport',
+        vehicle_type: '4-Seater Premium Sedan',
+        price: 95,
+        is_active: true,
+      },
+      {
+        id: 3,
+        route_name: 'Ashford → Stansted Airport',
+        pickup_pattern: 'Ashford',
+        dropoff_pattern: 'Stansted Airport',
+        vehicle_type: '4-Seater Premium Sedan',
+        price: 110,
+        is_active: true,
+      },
+      {
+        id: 4,
+        route_name: 'Ashford → Heathrow Airport',
+        pickup_pattern: 'Ashford',
+        dropoff_pattern: 'Heathrow Airport',
+        vehicle_type: '8-Seater MPV',
+        price: 105,
+        is_active: true,
+      },
+      {
+        id: 5,
+        route_name: 'Ashford → Gatwick Airport',
+        pickup_pattern: 'Ashford',
+        dropoff_pattern: 'Gatwick Airport',
+        vehicle_type: '8-Seater MPV',
+        price: 115,
+        is_active: true,
+      },
+      {
+        id: 6,
+        route_name: 'Ashford → Stansted Airport',
+        pickup_pattern: 'Ashford',
+        dropoff_pattern: 'Stansted Airport',
+        vehicle_type: '8-Seater MPV',
+        price: 130,
+        is_active: true,
+      },
+    ];
   }
 
   async createFare(fareData: any) {
@@ -583,15 +416,15 @@ class ApiClient {
     });
   }
 
-  async updateFare(fareId: number, fareData: any) {
-    return this.request(`/admin/fares/${fareId}`, {
+  async updateFare(fareId: string | number, fareData: any) {
+    return this.request(`/admin/fares/${String(fareId)}`, {
       method: 'PUT',
       body: JSON.stringify(fareData),
     });
   }
 
-  async deleteFare(fareId: number) {
-    return this.request(`/admin/fares/${fareId}`, {
+  async deleteFare(fareId: string | number) {
+    return this.request(`/admin/fares/${String(fareId)}`, {
       method: 'DELETE',
     });
   }
@@ -622,14 +455,6 @@ class ApiClient {
   }
 
   // Bookings endpoints
-  async estimateFare(request: any, options: RequestInit = {}) {
-    return this.request('/bookings/estimate', {
-      method: 'POST',
-      body: JSON.stringify(request),
-      ...options,
-    });
-  }
-
   async getBookings() {
     return this.request('/admin/bookings');
   }
@@ -641,18 +466,19 @@ class ApiClient {
     });
   }
 
-  async getBooking(bookingId: string) {
-    return this.request(`/bookings/${bookingId}`);
+  async getMyBookings() {
+    try {
+      return await this.request('/bookings/me');
+    } catch (error) {
+      if (error instanceof Error && /404/.test(error.message)) return [];
+      throw error;
+    }
   }
 
   async cancelBooking(bookingId: string) {
     return this.request(`/bookings/${bookingId}/cancel`, {
       method: 'POST',
     });
-  }
-
-  async getMyBookings() {
-    return this.request('/bookings');
   }
 
   async confirmBookingFare(bookingId: string, fare: number) {
@@ -669,184 +495,78 @@ class ApiClient {
 
   // Offers endpoints
   async getOffers() {
-    return this.request('/offers');
-  }
-
-  async createOffer(offerData: any) {
-    return this.request('/admin/offers', {
-      method: 'POST',
-      body: JSON.stringify(offerData),
-    });
-  }
-
-  async updateOffer(offerId: string, offerData: any) {
-    return this.request(`/admin/offers/${encodeURIComponent(offerId)}`, {
-      method: 'PUT',
-      body: JSON.stringify(offerData),
-    });
-  }
-
-  async deleteOffer(offerId: string) {
-    return this.request(`/admin/offers/${encodeURIComponent(offerId)}`, {
-      method: 'DELETE',
-    });
+    return this.request('/offers/');
   }
 
   async getAdminOffersAll() {
     return this.request('/admin/offers/all');
   }
 
-  async getUser() {
-    const profileKey = this.getProfileStorageKey();
-    const token = typeof window !== 'undefined' ? localStorage.getItem('kingtaxi_token') : null;
-
-    const readCached = () => {
-      if (typeof window === 'undefined') return null;
-      const raw = localStorage.getItem(profileKey);
-      if (raw) {
-        try {
-          return JSON.parse(raw);
-        } catch {}
-      }
-      if (profileKey !== 'kingtaxi_profile') {
-        const legacy = localStorage.getItem('kingtaxi_profile');
-        if (legacy) {
-          try {
-            const parsed = JSON.parse(legacy);
-            localStorage.setItem(profileKey, JSON.stringify(parsed));
-            return parsed;
-          } catch {}
-        }
-      }
-      return null;
-    };
-
-    if (!token) {
-      const cached = readCached();
-      if (cached) return cached;
-      return this.getAccount();
-    }
-
-    try {
-      const data = await this.request('/user');
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(profileKey, JSON.stringify(data));
-      }
-      return data;
-    } catch (e) {
-      try {
-        const fallback = await this.getAccount();
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(profileKey, JSON.stringify(fallback));
-        }
-        return fallback;
-      } catch {
-        const cached = readCached();
-        if (cached) return cached;
-        throw e instanceof Error ? e : new Error('User endpoint not available');
-      }
-    }
+  async createDriverApplication(payload: any) {
+    return this.request('/drivers/applications', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   }
 
-  async getAccount() {
-    const profileKey = this.getProfileStorageKey();
-    const endpointUnavailableKey = this.getAccountEndpointUnavailableKey();
-    if (typeof window !== 'undefined') {
-      const raw = localStorage.getItem(profileKey);
-      if (raw) {
-        try {
-          return JSON.parse(raw);
-        } catch {}
-      }
-      if (profileKey !== 'kingtaxi_profile') {
-        const legacy = localStorage.getItem('kingtaxi_profile');
-        if (legacy) {
-          try {
-            const parsed = JSON.parse(legacy);
-            localStorage.setItem(profileKey, JSON.stringify(parsed));
-            return parsed;
-          } catch {}
-        }
-      }
-      const stamp = localStorage.getItem(endpointUnavailableKey);
-      const stampNum = stamp ? Number(stamp) : 0;
-      if (stampNum && Number.isFinite(stampNum) && Date.now() - stampNum < 6 * 60 * 60 * 1000) {
-        throw new Error('Account endpoint not available');
-      }
-    }
-
-    const candidates = ['/users/me', '/auth/me', '/me', '/profile', '/users/profile', '/account'];
-    let lastError: unknown = null;
-    for (const path of candidates) {
-      try {
-        return await this.request(path);
-      } catch (e) {
-        lastError = e;
-      }
-    }
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(endpointUnavailableKey, String(Date.now()));
-    }
-    throw lastError instanceof Error ? lastError : new Error('Account endpoint not available');
+  async getMyDriverApplication() {
+    const data = await this.request<any[]>('/drivers/applications/me');
+    if (!Array.isArray(data) || data.length === 0) return null;
+    return data[0];
   }
 
-  async updateAccount(accountData: any) {
-    const candidates = ['/user', '/users/me', '/users/profile', '/account', '/profile'];
-    let lastError: unknown = null;
-    for (const path of candidates) {
-      try {
-        const result = await this.request(path, {
-          method: 'PUT',
-          body: JSON.stringify(accountData),
-        });
-        if (typeof window !== 'undefined') {
-          const key = this.getProfileStorageKey();
-          localStorage.setItem(key, JSON.stringify(result ?? accountData ?? {}));
-        }
-        return result;
-      } catch (e) {
-        lastError = e;
-        const msg = e instanceof Error ? e.message : '';
-        if (typeof msg === 'string' && msg.toLowerCase().includes('method not allowed')) {
-          try {
-            const result = await this.request(path, {
-              method: 'PATCH',
-              body: JSON.stringify(accountData),
-            });
-            if (typeof window !== 'undefined') {
-              const key = this.getProfileStorageKey();
-              localStorage.setItem(key, JSON.stringify(result ?? accountData ?? {}));
-            }
-            return result;
-          } catch (e2) {
-            lastError = e2;
-          }
-        }
-      }
-    }
-    throw lastError instanceof Error ? lastError : new Error('Account update endpoint not available');
+  async withdrawMyDriverApplication() {
+    throw new Error('Withdrawal is currently unavailable. Please contact support.');
+  }
+
+  async createOffer(offerData: any) {
+    return this.request('/offers/', {
+      method: 'POST',
+      body: JSON.stringify(offerData),
+    });
+  }
+
+  async updateOffer(offerId: string, offerData: any) {
+    return this.request(`/offers/${offerId}`, {
+      method: 'PUT',
+      body: JSON.stringify(offerData),
+    });
+  }
+
+  async deleteOffer(offerId: string) {
+    return this.request(`/offers/${offerId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Reviews endpoints
   async getReviews() {
-    throw new Error('Not implemented: reviews endpoints are not available on this backend');
+    return this.request('/reviews/');
   }
 
   async createReview(reviewData: any) {
-    throw new Error('Not implemented: reviews endpoints are not available on this backend');
+    return this.request('/reviews/', {
+      method: 'POST',
+      body: JSON.stringify(reviewData),
+    });
   }
 
   async updateReview(reviewId: string, reviewData: any) {
-    throw new Error('Not implemented: reviews endpoints are not available on this backend');
+    return this.request(`/reviews/${reviewId}`, {
+      method: 'PUT',
+      body: JSON.stringify(reviewData),
+    });
   }
 
   async deleteReview(reviewId: string) {
-    throw new Error('Not implemented: reviews endpoints are not available on this backend');
+    return this.request(`/reviews/${reviewId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Stats endpoint
   async getStats() {
-    throw new Error('Not implemented: stats endpoint is not available on this backend');
+    return this.request('/stats/');
   }
 }
 

@@ -1,0 +1,523 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e7] [cursor=pointer]:
+    - img [ref=e8]
+  - alert [ref=e11]
+  - navigation [ref=e12]:
+    - generic [ref=e15]:
+      - link "King Taxi Logo" [ref=e17] [cursor=pointer]:
+        - /url: /
+        - img "King Taxi Logo" [ref=e18]
+      - generic [ref=e20]:
+        - link "Home" [ref=e22] [cursor=pointer]:
+          - /url: /
+          - text: Home
+        - link "Book Now" [ref=e24] [cursor=pointer]:
+          - /url: /book
+          - text: Book Now
+        - link "About Us" [ref=e27] [cursor=pointer]:
+          - /url: /about
+          - text: About Us
+        - link "Picture Gallery" [ref=e29] [cursor=pointer]:
+          - /url: /gallery
+          - text: Picture Gallery
+        - link "Join Our Driving Team" [ref=e31] [cursor=pointer]:
+          - /url: /driver-application
+          - text: Join Our Driving Team
+      - generic [ref=e32]:
+        - button "Toggle theme" [ref=e33] [cursor=pointer]:
+          - img
+          - generic [ref=e34]: Toggle theme
+        - link "Sign In" [ref=e35] [cursor=pointer]:
+          - /url: /signin
+        - link "Sign Up" [ref=e36] [cursor=pointer]:
+          - /url: /signup
+  - main [ref=e37]:
+    - generic [ref=e38]:
+      - generic [ref=e39]:
+        - img "King Taxi Banner" [ref=e41]
+        - generic [ref=e45]:
+          - generic [ref=e46]:
+            - img [ref=e47]
+            - generic [ref=e49]: Trusted by 10,000+ Customers
+          - generic [ref=e50]:
+            - paragraph [ref=e51]: Premium Taxi Service
+            - img "King Taxi Logo" [ref=e53]
+            - paragraph [ref=e54]: in the UK
+          - paragraph [ref=e55]: Experience reliable, punctual, and quality transportation with our trusted drivers and modern fleet of vehicles. Your journey, our commitment.
+          - generic [ref=e56]:
+            - link "Book Your Ride Now" [ref=e57] [cursor=pointer]:
+              - /url: /book
+              - generic [ref=e58]: Book Your Ride Now
+              - img
+            - 'link "Call Now: +44 01233 367 357" [ref=e59] [cursor=pointer]':
+              - /url: tel:+4401233367357
+              - img
+              - generic [ref=e60]: "Call Now: +44 01233 367 357"
+          - generic [ref=e61]:
+            - generic [ref=e63]:
+              - img [ref=e65]
+              - heading "24/7 Service" [level=3] [ref=e68]
+              - paragraph [ref=e69]: Available round the clock for your convenience
+            - generic [ref=e71]:
+              - img [ref=e73]
+              - heading "UK Wide Coverage" [level=3] [ref=e76]
+              - paragraph [ref=e77]: Serving all major cities and airports
+            - generic [ref=e79]:
+              - img [ref=e81]
+              - heading "Easy Booking" [level=3] [ref=e83]
+              - paragraph [ref=e84]: Quick online booking or call us directly
+        - generic:
+          - paragraph: Scroll to explore
+      - generic [ref=e86]:
+        - generic [ref=e87]:
+          - heading "King Taxi Fares" [level=2] [ref=e88]
+          - paragraph [ref=e89]: Transparent pricing for all airport routes
+        - generic [ref=e91]:
+          - button "All Vehicles" [ref=e92] [cursor=pointer]
+          - button "4-Seater" [ref=e93] [cursor=pointer]
+          - button "8-Seater" [ref=e94] [cursor=pointer]
+        - generic [ref=e95]:
+          - generic [ref=e96]:
+            - generic [ref=e97]:
+              - generic [ref=e98]:
+                - img [ref=e99]
+                - heading "4-Seater" [level=3] [ref=e103]
+              - paragraph [ref=e104]: Premium Sedan
+            - generic [ref=e106]:
+              - generic [ref=e107]:
+                - generic [ref=e108]:
+                  - img [ref=e109]
+                  - generic [ref=e112]:
+                    - paragraph [ref=e113]: Ashford → Heathrow Airport
+                    - paragraph [ref=e114]: Ashford → Heathrow
+                - paragraph [ref=e116]: £85
+              - generic [ref=e117]:
+                - generic [ref=e118]:
+                  - img [ref=e119]
+                  - generic [ref=e122]:
+                    - paragraph [ref=e123]: Ashford → Gatwick Airport
+                    - paragraph [ref=e124]: Ashford → Gatwick
+                - paragraph [ref=e126]: £95
+              - generic [ref=e127]:
+                - generic [ref=e128]:
+                  - img [ref=e129]
+                  - generic [ref=e132]:
+                    - paragraph [ref=e133]: Ashford → Stansted Airport
+                    - paragraph [ref=e134]: Ashford → Stansted
+                - paragraph [ref=e136]: £110
+          - generic [ref=e137]:
+            - generic [ref=e138]:
+              - generic [ref=e139]:
+                - img [ref=e140]
+                - heading "8-Seater" [level=3] [ref=e144]
+              - paragraph [ref=e145]: Family MPV
+            - generic [ref=e147]:
+              - generic [ref=e148]:
+                - generic [ref=e149]:
+                  - img [ref=e150]
+                  - generic [ref=e153]:
+                    - paragraph [ref=e154]: Ashford → Heathrow Airport
+                    - paragraph [ref=e155]: Ashford → Heathrow
+                - paragraph [ref=e157]: £105
+              - generic [ref=e158]:
+                - generic [ref=e159]:
+                  - img [ref=e160]
+                  - generic [ref=e163]:
+                    - paragraph [ref=e164]: Ashford → Gatwick Airport
+                    - paragraph [ref=e165]: Ashford → Gatwick
+                - paragraph [ref=e167]: £115
+              - generic [ref=e168]:
+                - generic [ref=e169]:
+                  - img [ref=e170]
+                  - generic [ref=e173]:
+                    - paragraph [ref=e174]: Ashford → Stansted Airport
+                    - paragraph [ref=e175]: Ashford → Stansted
+                - paragraph [ref=e177]: £130
+        - generic [ref=e179]:
+          - heading "Ready to Book?" [level=3] [ref=e180]
+          - paragraph [ref=e181]: 100% guarantee on our services • No extra costs • No hidden charges
+          - generic [ref=e182]:
+            - 'link "Call Now: +44 01233 367 357" [ref=e183] [cursor=pointer]':
+              - /url: tel:+4401233367357
+              - img [ref=e184]
+              - text: "Call Now: +44 01233 367 357"
+            - link "Book Online" [ref=e186] [cursor=pointer]:
+              - /url: /book
+              - img [ref=e187]
+              - text: Book Online
+      - generic [ref=e190]:
+        - generic [ref=e191]:
+          - generic [ref=e192]:
+            - img [ref=e193]
+            - generic [ref=e195]: Our Core Values
+          - heading "Our Key Services" [level=2] [ref=e196]
+          - paragraph [ref=e197]: King Taxi's four key service areas are unbeatable. There is no compromise in Quality, Reliability, Punctuality and Availability. These are our highest priorities.
+        - generic [ref=e198]:
+          - generic [ref=e200]:
+            - generic [ref=e201]:
+              - img [ref=e203]
+              - generic [ref=e205]: Quality
+            - generic [ref=e206]:
+              - paragraph [ref=e207]: King Taxi's Drivers outfit, Behaviours, Cleanliness, Attitude are in our quality list. We are very serious in complying with this standard.
+              - link "Book Now" [ref=e208] [cursor=pointer]:
+                - /url: /book
+                - generic [ref=e209]: Book Now
+                - img
+          - generic [ref=e211]:
+            - generic [ref=e212]:
+              - img [ref=e214]
+              - generic [ref=e217]: Punctuality
+            - generic [ref=e218]:
+              - paragraph [ref=e219]: Time is most valuable to us. We try to deliver our services on time. But exception is when there is a traffic jam or any other disruptions caused delays.
+              - link "Book Now" [ref=e220] [cursor=pointer]:
+                - /url: /book
+                - generic [ref=e221]: Book Now
+                - img
+          - generic [ref=e223]:
+            - generic [ref=e224]:
+              - img [ref=e226]
+              - generic [ref=e228]: Reliability
+            - generic [ref=e229]:
+              - paragraph [ref=e230]: Your trust is our motto. We show respect, dignity and flexibility to grow our reliability. Your feedback is important to us.
+              - link "Book Now" [ref=e231] [cursor=pointer]:
+                - /url: /book
+                - generic [ref=e232]: Book Now
+                - img
+          - generic [ref=e234]:
+            - generic [ref=e235]:
+              - img [ref=e237]
+              - generic [ref=e242]: Availability
+            - generic [ref=e243]:
+              - paragraph [ref=e244]: We have huge range of available cars that meet your requirements anytime. But there is no guarantee in the busy season. So better to book in advance.
+              - link "Book Now" [ref=e245] [cursor=pointer]:
+                - /url: /book
+                - generic [ref=e246]: Book Now
+                - img
+        - generic [ref=e247]:
+          - generic [ref=e248]:
+            - generic [ref=e249]:
+              - img [ref=e250]
+              - generic [ref=e254]: Our Services
+            - heading "Comprehensive Taxi Services" [level=3] [ref=e255]
+            - paragraph [ref=e256]: From airport transfers to sightseeing tours, we provide a complete range of professional taxi services to meet all your transportation needs across the UK.
+          - generic [ref=e257]:
+            - generic [ref=e259]:
+              - generic [ref=e260]:
+                - img [ref=e262]
+                - generic [ref=e266]: CRB Qualified Drivers
+              - generic [ref=e267]:
+                - paragraph [ref=e268]: All our drivers are CRB checked and professionally trained to ensure your safety and comfort.
+                - link "Book Now" [ref=e269] [cursor=pointer]:
+                  - /url: /book
+                  - generic [ref=e270]: Book Now
+                  - img
+            - generic [ref=e272]:
+              - generic [ref=e273]:
+                - img [ref=e275]
+                - generic [ref=e278]: UK-Wide Taxi Service
+              - generic [ref=e279]:
+                - paragraph [ref=e280]: Comprehensive taxi service coverage across the entire United Kingdom for all your travel needs.
+                - link "Book Now" [ref=e281] [cursor=pointer]:
+                  - /url: /book
+                  - generic [ref=e282]: Book Now
+                  - img
+            - generic [ref=e284]:
+              - generic [ref=e285]:
+                - img [ref=e287]
+                - generic [ref=e290]: 24x7 Taxi Service
+              - generic [ref=e291]:
+                - paragraph [ref=e292]: Round-the-clock availability ensuring you can book a taxi anytime, day or night.
+                - link "Book Now" [ref=e293] [cursor=pointer]:
+                  - /url: /book
+                  - generic [ref=e294]: Book Now
+                  - img
+            - generic [ref=e296]:
+              - generic [ref=e297]:
+                - img [ref=e299]
+                - generic [ref=e301]: Event Booking
+              - generic [ref=e302]:
+                - paragraph [ref=e303]: Special event transportation for weddings, parties, corporate events, and special occasions.
+                - link "Book Now" [ref=e304] [cursor=pointer]:
+                  - /url: /book
+                  - generic [ref=e305]: Book Now
+                  - img
+            - generic [ref=e307]:
+              - generic [ref=e308]:
+                - img [ref=e310]
+                - generic [ref=e312]: Airport Transfer
+              - generic [ref=e313]:
+                - paragraph [ref=e314]: Reliable airport pickup and drop-off services with flight monitoring and meet & greet options.
+                - link "Book Now" [ref=e315] [cursor=pointer]:
+                  - /url: /book
+                  - generic [ref=e316]: Book Now
+                  - img
+            - generic [ref=e318]:
+              - generic [ref=e319]:
+                - img [ref=e321]
+                - generic [ref=e324]: Sightseeing Tours
+              - generic [ref=e325]:
+                - paragraph [ref=e326]: Guided sightseeing tours and tourist transportation to explore local attractions and landmarks.
+                - link "Book Now" [ref=e327] [cursor=pointer]:
+                  - /url: /book
+                  - generic [ref=e328]: Book Now
+                  - img
+            - generic [ref=e330]:
+              - generic [ref=e331]:
+                - img [ref=e333]
+                - generic [ref=e336]: Shopping Trips
+              - generic [ref=e337]:
+                - paragraph [ref=e338]: Convenient transportation for shopping trips with waiting time and multiple stop options.
+                - link "Book Now" [ref=e339] [cursor=pointer]:
+                  - /url: /book
+                  - generic [ref=e340]: Book Now
+                  - img
+            - generic [ref=e342]:
+              - generic [ref=e343]:
+                - img [ref=e345]
+                - generic [ref=e348]: Local & Long Distance
+              - generic [ref=e349]:
+                - paragraph [ref=e350]: Both local city rides and long-distance intercity travel with comfortable vehicles.
+                - link "Book Now" [ref=e351] [cursor=pointer]:
+                  - /url: /book
+                  - generic [ref=e352]: Book Now
+                  - img
+        - generic [ref=e355]:
+          - generic [ref=e356]:
+            - generic [ref=e357]:
+              - img [ref=e358]
+              - generic [ref=e360]: Why Choose Us
+            - heading "Why Choose King Taxi?" [level=3] [ref=e361]
+            - paragraph [ref=e362]: We are committed to deliver the highest standard in our services ensuring you are safe and comfortable while onboard, offering unbeatable prices and excellent customer services.
+            - generic [ref=e363]:
+              - generic [ref=e364]:
+                - img [ref=e366]
+                - generic [ref=e369]: CRB checked and professionally trained drivers
+              - generic [ref=e370]:
+                - img [ref=e372]
+                - generic [ref=e375]: Modern, clean and well-maintained fleet
+              - generic [ref=e376]:
+                - img [ref=e378]
+                - generic [ref=e381]: GPS tracking and real-time journey monitoring
+              - generic [ref=e382]:
+                - img [ref=e384]
+                - generic [ref=e387]: Competitive pricing with transparent fare structure
+              - generic [ref=e388]:
+                - img [ref=e390]
+                - generic [ref=e393]: "Multiple vehicle types: saloon, estate, MPV, and executive cars"
+              - generic [ref=e394]:
+                - img [ref=e396]
+                - generic [ref=e399]: Advanced booking system with instant confirmation
+              - generic [ref=e400]:
+                - img [ref=e402]
+                - generic [ref=e405]: Meet & greet service for airport transfers
+              - generic [ref=e406]:
+                - img [ref=e408]
+                - generic [ref=e411]: Child seats and wheelchair accessible vehicles available
+              - generic [ref=e412]:
+                - img [ref=e414]
+                - generic [ref=e417]: Corporate accounts and business travel solutions
+              - generic [ref=e418]:
+                - img [ref=e420]
+                - generic [ref=e423]: Emergency and urgent ride services
+              - generic [ref=e424]:
+                - img [ref=e426]
+                - generic [ref=e429]: Multi-stop journeys and waiting time options
+              - generic [ref=e430]:
+                - img [ref=e432]
+                - generic [ref=e435]: Professional uniformed drivers with local knowledge
+          - generic [ref=e441]:
+            - heading "Ready to Book?" [level=4] [ref=e442]
+            - paragraph [ref=e443]: Experience our premium taxi service today. Book now for a comfortable and reliable journey.
+            - link "Book Your Taxi Now" [ref=e444] [cursor=pointer]:
+              - /url: /book
+              - generic [ref=e445]: Book Your Taxi Now
+              - img
+      - generic [ref=e447]:
+        - generic [ref=e448]:
+          - heading "What Our Customers Say" [level=2] [ref=e449]
+          - paragraph [ref=e450]: Don't just take our word for it. Here's what our valued customers have to say about their experience with King Taxi.
+        - generic [ref=e451]:
+          - generic [ref=e452]:
+            - generic [ref=e453]: 10+
+            - generic [ref=e454]: Years of Service
+          - generic [ref=e455]:
+            - generic [ref=e456]: 50,000+
+            - generic [ref=e457]: Happy Customers
+          - generic [ref=e458]:
+            - generic [ref=e459]: 4.9/5
+            - generic [ref=e460]: Average Rating
+          - generic [ref=e461]:
+            - generic [ref=e462]: 24/7
+            - generic [ref=e463]: Service Available
+        - generic [ref=e464]:
+          - generic [ref=e465]:
+            - img [ref=e466]
+            - generic [ref=e469]:
+              - generic [ref=e470]: SJ
+              - generic [ref=e471]:
+                - heading "Sarah Johnson" [level=4] [ref=e472]
+                - generic [ref=e473]:
+                  - generic [ref=e474]:
+                    - img [ref=e475]
+                    - img [ref=e477]
+                    - img [ref=e479]
+                    - img [ref=e481]
+                    - img [ref=e483]
+                  - generic [ref=e485]: Verified
+            - paragraph [ref=e486]: “Excellent service! The driver was punctual, professional, and the car was spotless. Will definitely use King Taxi again for my airport transfers.”
+            - generic [ref=e487]: 2 weeks ago
+          - generic [ref=e488]:
+            - img [ref=e489]
+            - generic [ref=e492]:
+              - generic [ref=e493]: MB
+              - generic [ref=e494]:
+                - heading "Michael Brown" [level=4] [ref=e495]
+                - generic [ref=e496]:
+                  - generic [ref=e497]:
+                    - img [ref=e498]
+                    - img [ref=e500]
+                    - img [ref=e502]
+                    - img [ref=e504]
+                    - img [ref=e506]
+                  - generic [ref=e508]: Verified
+            - paragraph [ref=e509]: “Outstanding experience from booking to drop-off. The online booking system is user-friendly, and the driver was courteous and knowledgeable about the area.”
+            - generic [ref=e510]: 1 month ago
+          - generic [ref=e511]:
+            - img [ref=e512]
+            - generic [ref=e515]:
+              - generic [ref=e516]: EW
+              - generic [ref=e517]:
+                - heading "Emma Wilson" [level=4] [ref=e518]
+                - generic [ref=e519]:
+                  - generic [ref=e520]:
+                    - img [ref=e521]
+                    - img [ref=e523]
+                    - img [ref=e525]
+                    - img [ref=e527]
+                    - img [ref=e529]
+                  - generic [ref=e531]: Verified
+            - paragraph [ref=e532]: “King Taxi saved the day when my flight was delayed. The driver waited patiently without extra charges. Truly reliable service!”
+            - generic [ref=e533]: 3 weeks ago
+          - generic [ref=e534]:
+            - img [ref=e535]
+            - generic [ref=e538]:
+              - generic [ref=e539]: DM
+              - generic [ref=e540]:
+                - heading "David Miller" [level=4] [ref=e541]
+                - generic [ref=e542]:
+                  - generic [ref=e543]:
+                    - img [ref=e544]
+                    - img [ref=e546]
+                    - img [ref=e548]
+                    - img [ref=e550]
+                    - img [ref=e552]
+                  - generic [ref=e554]: Verified
+            - paragraph [ref=e555]: “Used King Taxi for a business trip. The executive car was luxurious and comfortable. Professional service that I would highly recommend.”
+            - generic [ref=e556]: 1 week ago
+          - generic [ref=e557]:
+            - img [ref=e558]
+            - generic [ref=e561]:
+              - generic [ref=e562]: LA
+              - generic [ref=e563]:
+                - heading "Lisa Anderson" [level=4] [ref=e564]
+                - generic [ref=e565]:
+                  - generic [ref=e566]:
+                    - img [ref=e567]
+                    - img [ref=e569]
+                    - img [ref=e571]
+                    - img [ref=e573]
+                    - img [ref=e575]
+                  - generic [ref=e577]: Verified
+            - paragraph [ref=e578]: “Great value for money! Clean vehicles, friendly drivers, and always on time. My go-to taxi service in the area.”
+            - generic [ref=e579]: 2 months ago
+          - generic [ref=e580]:
+            - img [ref=e581]
+            - generic [ref=e584]:
+              - generic [ref=e585]: JT
+              - generic [ref=e586]:
+                - heading "James Taylor" [level=4] [ref=e587]
+                - generic [ref=e588]:
+                  - generic [ref=e589]:
+                    - img [ref=e590]
+                    - img [ref=e592]
+                    - img [ref=e594]
+                    - img [ref=e596]
+                    - img [ref=e598]
+                  - generic [ref=e600]: Verified
+            - paragraph [ref=e601]: “Booked a minibus for our group outing. Spacious, comfortable, and the driver was very accommodating. Excellent service overall.”
+            - generic [ref=e602]: 3 weeks ago
+        - generic [ref=e604]:
+          - heading "Join Thousands of Satisfied Customers" [level=3] [ref=e605]
+          - paragraph [ref=e606]: Experience the same exceptional service that has earned us countless 5-star reviews. Book your ride today and see why customers choose King Taxi.
+          - generic [ref=e607]:
+            - link "Book Your Ride Now" [ref=e608] [cursor=pointer]:
+              - /url: /book
+            - 'link "Call: +44 01233 367 357" [ref=e609] [cursor=pointer]':
+              - /url: tel:+4401233367357
+  - contentinfo [ref=e610]:
+    - generic [ref=e611]:
+      - generic [ref=e612]:
+        - generic [ref=e613]:
+          - img "King Taxi Logo" [ref=e615]
+          - paragraph [ref=e616]: Premium taxi service in the UK offering reliable, punctual, and quality transportation with trusted drivers and modern vehicles.
+        - generic [ref=e617]:
+          - heading "Contact Us" [level=4] [ref=e618]
+          - generic [ref=e619]:
+            - generic [ref=e620]:
+              - img [ref=e621]
+              - generic [ref=e624]: Ashford, Kent, UK
+            - generic [ref=e625]:
+              - img [ref=e626]
+              - link "+44 01233 367 357" [ref=e628] [cursor=pointer]:
+                - /url: tel:+4401233367357
+            - generic [ref=e629]:
+              - img [ref=e630]
+              - generic [ref=e633]: info@kingtaxi.co.uk
+        - generic [ref=e634]:
+          - heading "Quick Links" [level=4] [ref=e635]
+          - generic [ref=e636]:
+            - link "Home" [ref=e637] [cursor=pointer]:
+              - /url: /
+            - link "About Us" [ref=e638] [cursor=pointer]:
+              - /url: /about
+            - link "Services" [ref=e639] [cursor=pointer]:
+              - /url: /services
+            - link "Book Now" [ref=e640] [cursor=pointer]:
+              - /url: /book
+            - link "Gallery" [ref=e641] [cursor=pointer]:
+              - /url: /gallery
+            - link "Contact" [ref=e642] [cursor=pointer]:
+              - /url: /contact
+        - generic [ref=e643]:
+          - heading "Follow Us" [level=4] [ref=e644]
+          - generic [ref=e645]:
+            - link "Facebook" [ref=e646] [cursor=pointer]:
+              - /url: https://www.facebook.com/KingTaxiAshford/
+              - img [ref=e647]
+            - link "Twitter" [ref=e649] [cursor=pointer]:
+              - /url: https://x.com/kingtaxiashford
+              - img [ref=e650]
+            - link "Instagram" [ref=e652] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e653]
+            - link "YouTube" [ref=e656] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e657]
+          - generic [ref=e660]:
+            - heading "Operating Hours" [level=5] [ref=e661]
+            - generic [ref=e662]:
+              - paragraph [ref=e663]: 24/7 Service Available
+              - paragraph [ref=e664]: Emergency Bookings Welcome
+      - generic [ref=e666]:
+        - paragraph [ref=e667]: © 2026 King Taxi. All rights reserved.
+        - generic [ref=e668]:
+          - link "Privacy Policy" [ref=e669] [cursor=pointer]:
+            - /url: /privacy
+          - link "Terms of Service" [ref=e670] [cursor=pointer]:
+            - /url: /terms
+          - link "Cookie Policy" [ref=e671] [cursor=pointer]:
+            - /url: /cookies
+```

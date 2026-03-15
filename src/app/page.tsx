@@ -17,7 +17,7 @@ export const metadata = {
 
 export default function Home() {
   return (
-    <div className="relative pt-20 bg-white dark:bg-gray-900 min-h-screen">
+    <div className="pt-20 bg-white dark:bg-gray-900 min-h-screen">
       <OffersBanner />
       <Hero />
       <InteractiveFareTable />

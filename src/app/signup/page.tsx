@@ -51,16 +51,6 @@ export default function SignUp() {
       };
       try {
         await (await import('@/lib/api')).default.register(payload as any);
-        try {
-          localStorage.setItem(
-            'kingtaxi_profile',
-            JSON.stringify({
-              full_name: formData.fullName || '',
-              email: formData.email || '',
-              phone: formData.phone || '',
-            })
-          );
-        } catch {}
         setSuccess(true);
         // Redirect to signin page after a short delay
         setTimeout(() => {
@@ -146,7 +136,7 @@ export default function SignUp() {
                 </div>
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
+                <div>
                   <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Full Name *
                   </label>
@@ -352,9 +342,7 @@ export default function SignUp() {
               <div className="space-y-2">
                 <p className="flex items-center">
                   <Phone className="w-4 h-4 mr-2" />
-                  <a href="tel:+4401233367357" className="hover:underline">
-                    +44 01233 367 357
-                  </a>
+                  +44 01233 367 357
                 </p>
                 <p className="flex items-center">
                   <Mail className="w-4 h-4 mr-2" />

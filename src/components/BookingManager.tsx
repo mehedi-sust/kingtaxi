@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, CheckCircle, User, Car, PoundSterling, X } from 'lucide-react';
+import { Calendar, Clock, MapPin, CheckCircle, User, Car, PoundSterling, Eye, XCircle } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 
 interface Booking {
@@ -11,67 +11,31 @@ interface Booking {
   pickup_address: string;
   dropoff_address: string;
   pickup_time: string;
+  trip_type?: string;
+  notes?: string;
   vehicle_type: string;
   estimated_fare?: number;
   confirmed_fare?: number;
+  driver_id?: string | null;
+  driver?: {
+    id: string;
+    name?: string;
+    phone?: string;
+    vehicle_model?: string;
+    vehicle_plate?: string;
+    status?: string;
+  } | null;
   status: string;
   created_at: string;
-  driver_id?: string | null;
 }
 
 interface Driver {
   id: string;
-  name: string;
-  phone: string;
-  vehicle_plate: string;
-  status: string;
-}
-
-function toTelHref(phone: string) {
-  const raw = (phone || '').trim();
-  if (!raw) return '';
-  const normalized = raw.replace(/[^\d+]/g, '');
-  return `tel:${normalized || raw}`;
-}
-
-function normalizeDriver(input: any): Driver {
-  const id = String(input?.id ?? input?.driver_id ?? '');
-  const name =
-    (typeof input?.name === 'string' && input.name.trim()) ||
-    [input?.first_name, input?.last_name].filter(Boolean).join(' ') ||
-    String(input?.full_name ?? input?.email ?? input?.phone ?? id);
-  return {
-    id,
-    name,
-    phone: String(input?.phone ?? input?.mobile ?? input?.customer_phone ?? ''),
-    vehicle_plate: String(input?.vehicle_plate ?? input?.plate ?? input?.vehicle?.plate ?? ''),
-    status: String(input?.status ?? input?.driver_status ?? 'UNKNOWN'),
-  };
-}
-
-function normalizeBooking(input: any): Booking {
-  const id = String(input?.id ?? input?.booking_id ?? '');
-  const parseFare = (value: unknown) => {
-    if (typeof value === 'number') return value;
-    if (typeof value === 'string') {
-      const parsed = parseFloat(value);
-      return Number.isNaN(parsed) ? undefined : parsed;
-    }
-    return undefined;
-  };
-  return {
-    id,
-    customer_phone: String(input?.customer_phone ?? input?.phone ?? input?.customer?.phone ?? input?.customer?.mobile ?? ''),
-    pickup_address: String(input?.pickup_address ?? input?.pickup_location ?? input?.pickup ?? ''),
-    dropoff_address: String(input?.dropoff_address ?? input?.destination ?? input?.dropoff ?? ''),
-    pickup_time: String(input?.pickup_time ?? input?.pickup_datetime ?? input?.pickup_at ?? input?.scheduled_at ?? input?.created_at ?? ''),
-    vehicle_type: String(input?.vehicle_type ?? input?.vehicle ?? input?.vehicle_name ?? ''),
-    estimated_fare: parseFare(input?.estimated_fare ?? input?.estimatedFare),
-    confirmed_fare: parseFare(input?.confirmed_fare ?? input?.confirmedFare),
-    status: String(input?.status ?? input?.booking_status ?? 'UNKNOWN'),
-    created_at: String(input?.created_at ?? input?.createdAt ?? ''),
-    driver_id: input?.driver_id ?? input?.driverId ?? input?.driver?.id ?? null,
-  };
+  name?: string;
+  phone?: string;
+  vehicle_model?: string;
+  vehicle_plate?: string;
+  status?: string;
 }
 
 export default function BookingManager() {
@@ -79,106 +43,87 @@ export default function BookingManager() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [fareInput, setFareInput] = useState<Record<string, string>>({});
-  const [driverSelection, setDriverSelection] = useState<Record<string, string>>({});
+  const [success, setSuccess] = useState<string | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [fareInput, setFareInput] = useState('');
+  const [selectedDriverId, setSelectedDriverId] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const fetchBookings = async () => {
     try {
       const data = await apiClient.getBookings();
-      const raw =
-        Array.isArray(data) ? data : Array.isArray((data as any)?.bookings) ? (data as any).bookings : (data as any)?.data;
-      const normalized = Array.isArray(raw) ? raw.map(normalizeBooking) : [];
-      setBookings(normalized);
-      return normalized;
+      setBookings(data as Booking[]);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load bookings');
     } finally {
       setLoading(false);
     }
-    return [];
+  };
+
+  const fetchDrivers = async () => {
+    try {
+      const data = await apiClient.getDrivers();
+      setDrivers(data as Driver[]);
+    } catch {}
   };
 
   useEffect(() => {
-    fetchBookings();
-    apiClient
-      .getDrivers()
-      .then((data) => {
-        const raw =
-          Array.isArray(data) ? data : Array.isArray((data as any)?.drivers) ? (data as any).drivers : (data as any)?.data;
-        setDrivers(Array.isArray(raw) ? raw.map(normalizeDriver) : []);
-      })
-      .catch(() => setDrivers([]));
+    Promise.all([fetchBookings(), fetchDrivers()]);
   }, []);
 
-  useEffect(() => {
-    if (!showDetailsModal) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [showDetailsModal]);
-
-  const driverById = drivers.reduce<Record<string, Driver>>((acc, d) => {
-    acc[d.id] = d;
-    return acc;
-  }, {});
-
-  const formatDate = (value: string) => {
-    if (!value) return '-';
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
+  const openBookingModal = (booking: Booking) => {
+    setSelectedBooking(booking);
+    setFareInput(String(booking.confirmed_fare ?? booking.estimated_fare ?? ''));
+    setSelectedDriverId(booking.driver_id || booking.driver?.id || '');
+    setError(null);
+    setSuccess(null);
   };
 
-  const formatTime = (value: string) => {
-    if (!value) return '-';
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? '-' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const closeBookingModal = () => {
+    setSelectedBooking(null);
+    setFareInput('');
+    setSelectedDriverId('');
   };
 
-  const formatMoney = (value?: number) => {
-    if (typeof value !== 'number') return '-';
-    return `£${value.toFixed(2)}`;
-  };
-
-  const confirmBooking = async () => {
+  const saveBookingUpdates = async () => {
     if (!selectedBooking) return;
-    const bookingId = selectedBooking.id;
-    const needsDriver = !selectedBooking.driver_id;
-    const needsFare = typeof selectedBooking.confirmed_fare !== 'number';
-    const chosenDriver = driverSelection[bookingId];
-    const fareValue = parseFloat(fareInput[bookingId] || '');
-
-    if (needsDriver && !chosenDriver) {
-      setError('Select a driver to confirm this booking');
+    const value = parseFloat(fareInput || '');
+    if (isNaN(value) || value <= 0) {
+      setError('Enter a valid fare');
       return;
     }
-    if (needsFare && !(fareInput[bookingId] || '').trim()) {
-      setError('Enter a fare to confirm this booking');
-      return;
-    }
-    if (needsFare && (Number.isNaN(fareValue) || fareValue <= 0)) {
-      setError('Enter a valid fare to confirm this booking');
-      return;
-    }
-
     try {
-      if (needsDriver) {
-        await apiClient.assignBookingDriver(bookingId, chosenDriver);
+      setIsSaving(true);
+      await apiClient.confirmBookingFare(selectedBooking.id, value);
+      if (selectedDriverId) {
+        await apiClient.assignBookingDriver(selectedBooking.id, selectedDriverId);
       }
-      if (needsFare) {
-        await apiClient.confirmBookingFare(bookingId, fareValue);
-      }
-      const updated = await fetchBookings();
-      const refreshed = updated.find((b) => b.id === bookingId) || null;
-      setSelectedBooking(refreshed);
-      if (!refreshed) setShowDetailsModal(false);
+      await Promise.all([fetchBookings(), fetchDrivers()]);
+      setSuccess('Booking updated successfully.');
+      closeBookingModal();
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to confirm booking');
+      setError(e instanceof Error ? e.message : 'Failed to update booking');
+    } finally {
+      setIsSaving(false);
     }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString();
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getDriverName = (driver?: Driver | Booking['driver'] | null) => {
+    if (!driver) return 'Unassigned';
+    return driver.name || driver.phone || driver.vehicle_plate || 'Assigned driver';
   };
 
   if (loading) {
@@ -207,6 +152,15 @@ export default function BookingManager() {
           {error}
         </motion.div>
       )}
+      {success && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-200 px-4 py-3 rounded"
+        >
+          {success}
+        </motion.div>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -218,9 +172,13 @@ export default function BookingManager() {
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Customer Phone</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Booking Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Booking Time</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Customer</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Route</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pickup</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Vehicle</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fare</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Driver</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -230,41 +188,59 @@ export default function BookingManager() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <User className="w-4 h-4 text-gray-400 mr-2" />
-                      {b.customer_phone ? (
-                        <a href={toTelHref(b.customer_phone)} className="text-sm text-gray-900 dark:text-white hover:underline">
-                          {b.customer_phone}
-                        </a>
-                      ) : (
-                        <span className="text-sm text-gray-900 dark:text-white">-</span>
-                      )}
+                      <span className="text-sm text-gray-900 dark:text-white">{b.customer_phone}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <MapPin className="w-4 h-4 text-gray-400 mr-2" />
+                      <div className="text-sm text-gray-900 dark:text-white">{b.pickup_address} → {b.dropoff_address}</div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <Calendar className="w-4 h-4 text-gray-400 mr-2" />
                       <span className="text-sm text-gray-900 dark:text-white">
-                        {formatDate(b.pickup_time || b.created_at)}
+                        {formatDate(b.pickup_time)}
+                      </span>
+                      <Clock className="w-4 h-4 text-gray-400 ml-3 mr-2" />
+                      <span className="text-sm text-gray-900 dark:text-white">
+                        {formatTime(b.pickup_time)}
                       </span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <Clock className="w-4 h-4 text-gray-400 mr-2" />
+                      <Car className="w-4 h-4 text-gray-400 mr-2" />
+                      <span className="text-sm text-gray-900 dark:text-white">{b.vehicle_type}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <PoundSterling className="w-4 h-4 text-gray-400 mr-1" />
                       <span className="text-sm text-gray-900 dark:text-white">
-                        {formatTime(b.pickup_time || b.created_at)}
+                        {b.confirmed_fare ?? b.estimated_fare ?? '-'}
                       </span>
                     </div>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                    {getDriverName(b.driver)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                      {b.status}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => {
-                        setSelectedBooking(b);
-                        setShowDetailsModal(true);
-                      }}
-                      className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                    >
-                      Details
-                    </button>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => openBookingModal(b)}
+                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 flex items-center"
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        Manage
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -273,127 +249,112 @@ export default function BookingManager() {
         </div>
       </motion.div>
 
-      {showDetailsModal && selectedBooking && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center overflow-y-auto px-4 pb-8 pt-24 sm:pt-28 sm:pb-12">
+      {selectedBooking && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="bg-white dark:bg-gray-800 rounded-2xl max-w-3xl w-full max-h-[calc(100vh-6rem)] overflow-y-auto"
+            className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto"
           >
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Booking Details</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">ID: {selectedBooking.id}</p>
-              </div>
-              <button
-                onClick={() => setShowDetailsModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-              >
-                <X className="w-6 h-6" />
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Booking Details</h3>
+              <button onClick={closeBookingModal} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <XCircle className="w-6 h-6" />
               </button>
             </div>
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Customer Phone</label>
-                  <p className="text-gray-900 dark:text-white">{selectedBooking.customer_phone || '-'}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Customer</p>
+                  <p className="text-gray-900 dark:text-white">{selectedBooking.customer_phone}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Pickup</p>
+                  <p className="text-gray-900 dark:text-white">{selectedBooking.pickup_address}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Dropoff</p>
+                  <p className="text-gray-900 dark:text-white">{selectedBooking.dropoff_address}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Pickup time</p>
+                  <p className="text-gray-900 dark:text-white">
+                    {formatDate(selectedBooking.pickup_time)} {formatTime(selectedBooking.pickup_time)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Vehicle</p>
+                  <p className="text-gray-900 dark:text-white">{selectedBooking.vehicle_type}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Trip type</p>
+                  <p className="text-gray-900 dark:text-white">{selectedBooking.trip_type || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Status</p>
                   <p className="text-gray-900 dark:text-white">{selectedBooking.status}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Pickup Address</label>
-                  <p className="text-gray-900 dark:text-white">{selectedBooking.pickup_address || '-'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Dropoff Address</label>
-                  <p className="text-gray-900 dark:text-white">{selectedBooking.dropoff_address || '-'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Pickup Date</label>
-                  <p className="text-gray-900 dark:text-white">{formatDate(selectedBooking.pickup_time || selectedBooking.created_at)}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Pickup Time</label>
-                  <p className="text-gray-900 dark:text-white">{formatTime(selectedBooking.pickup_time || selectedBooking.created_at)}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Vehicle Type</label>
-                  <p className="text-gray-900 dark:text-white">{selectedBooking.vehicle_type || '-'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Estimated Fare</label>
-                  <p className="text-gray-900 dark:text-white">{formatMoney(selectedBooking.estimated_fare)}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Confirmed Fare</label>
-                  <p className="text-gray-900 dark:text-white">{formatMoney(selectedBooking.confirmed_fare)}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Notes</p>
+                  <p className="text-gray-900 dark:text-white">{selectedBooking.notes || '-'}</p>
                 </div>
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                  <div className="flex items-center gap-2 mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">
-                    <Car className="w-4 h-4" />
-                    Assign Driver
-                  </div>
-                  {selectedBooking.driver_id ? (
-                    <p className="text-sm text-gray-900 dark:text-white">
-                      {driverById[selectedBooking.driver_id]?.name || selectedBooking.driver_id}
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      <select
-                        value={driverSelection[selectedBooking.id] || ''}
-                        onChange={(e) => setDriverSelection({ ...driverSelection, [selectedBooking.id]: e.target.value })}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
-                      >
-                        <option value="">Select driver</option>
-                        {drivers.map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {d.name}{d.vehicle_plate ? ` (${d.vehicle_plate})` : ''}
-                          </option>
-                        ))}
-                      </select>
-                      {!driverSelection[selectedBooking.id] && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Choose a driver to complete this booking.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                  <div className="flex items-center gap-2 mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">
-                    <PoundSterling className="w-4 h-4" />
-                    Confirm Fare
-                  </div>
-                  <div className="space-y-3">
-                    <input
-                      type="number"
-                      placeholder="Enter fare"
-                      value={fareInput[selectedBooking.id] || ''}
-                      onChange={(e) => setFareInput({ ...fareInput, [selectedBooking.id]: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700 dark:text-white"
-                    />
-                    {!fareInput[selectedBooking.id] && typeof selectedBooking.confirmed_fare !== 'number' && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Enter a fare to confirm this booking.</p>
-                    )}
-                  </div>
-                </div>
+            <div className="mt-6 space-y-5 border-t border-gray-200 dark:border-gray-700 pt-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Confirmed Fare (£)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={fareInput}
+                  onChange={(e) => setFareInput(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2"
+                />
               </div>
 
-              <div className="flex justify-end">
-                <button
-                  onClick={confirmBooking}
-                  className="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded flex items-center"
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Assign Driver</label>
+                <select
+                  value={selectedDriverId}
+                  onChange={(e) => setSelectedDriverId(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2"
                 >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Confirm Booking
-                </button>
+                  <option value="">No driver selected</option>
+                  {drivers.map((driver) => (
+                    <option key={driver.id} value={driver.id}>
+                      {getDriverName(driver)} {driver.vehicle_plate ? `(${driver.vehicle_plate})` : ''} {driver.status ? `- ${driver.status}` : ''}
+                    </option>
+                  ))}
+                </select>
+                {selectedBooking.driver && (
+                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                    Currently assigned: {getDriverName(selectedBooking.driver)}
+                  </p>
+                )}
               </div>
+            </div>
+
+            <div className="mt-8 flex justify-end gap-3">
+              <button
+                onClick={closeBookingModal}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveBookingUpdates}
+                disabled={isSaving}
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white flex items-center"
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                {isSaving ? 'Saving...' : 'Save Booking'}
+              </button>
             </div>
           </motion.div>
         </div>
