@@ -140,6 +140,31 @@ class ApiClient {
     });
   }
 
+  async requestPasswordReset(emailOrPhone: string) {
+    return this.request('/auth/request-reset', {
+      method: 'POST',
+      body: JSON.stringify({ email_or_phone: emailOrPhone }),
+    });
+  }
+
+  async verifyPasswordResetCode(emailOrPhone: string, code: string) {
+    return this.request('/auth/verify-reset-code', {
+      method: 'POST',
+      body: JSON.stringify({ email_or_phone: emailOrPhone, code }),
+    });
+  }
+
+  async resetPassword(emailOrPhone: string, code: string, newPassword: string) {
+    return this.request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({
+        email_or_phone: emailOrPhone,
+        code,
+        new_password: newPassword,
+      }),
+    });
+  }
+
   async hasAdminAccess(): Promise<boolean> {
     const token = typeof window !== 'undefined' ? localStorage.getItem('kingtaxi_token') : null;
     if (!token) return false;
