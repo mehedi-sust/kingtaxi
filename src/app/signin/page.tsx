@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function SignIn() {
   const [formData, setFormData] = useState({
-    email: '',
+    emailOrPhone: '',
     password: '',
     rememberMe: false,
   });
@@ -34,7 +34,7 @@ export default function SignIn() {
     setError('');
 
     try {
-      const success = await login(formData.email, formData.password);
+      const success = await login(formData.emailOrPhone, formData.password);
       if (success) {
         router.push('/');
       } else {
@@ -91,20 +91,20 @@ export default function SignIn() {
               )}
               
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address
+                  <label htmlFor="emailOrPhone" className="block text-sm font-medium text-gray-700 mb-2">
+                  Email or Phone
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
                   <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={formData.email}
+                    type="text"
+                    id="emailOrPhone"
+                    name="emailOrPhone"
+                    value={formData.emailOrPhone}
                     onChange={handleInputChange}
                     required
                     className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="Enter your email address"
+                    placeholder="Enter your email or phone"
                   />
                 </div>
               </div>

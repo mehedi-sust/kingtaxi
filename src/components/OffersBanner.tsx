@@ -2,68 +2,75 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Percent, Calendar, Clock } from 'lucide-react';
+import { X, Percent, Calendar, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
+import { apiClient } from '@/lib/api';
 
-interface Offer {
-  id: number;
+interface ApiOffer {
+  id: string | number;
   title: string;
   description: string;
   discount: number;
-  discountType: 'percentage' | 'fixed';
-  startDate: string;
-  endDate: string;
-  isActive: boolean;
+  discount_type: 'percentage' | 'fixed';
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
   category: string;
 }
 
 export default function OffersBanner() {
-  const [currentOfferIndex, setCurrentOfferIndex] = useState(0);
-  const [isVisible, setIsVisible] = useState(true);
+  const [offers, setOffers] = useState<ApiOffer[]>([]);
+  const [dismissedIds, setDismissedIds] = useState<Record<string, boolean>>({});
+  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
 
-  // Mock active offers - in real app, this would come from your API
-  const activeOffers: Offer[] = [
-    {
-      id: 1,
-      title: 'Summer Discount',
-      description: 'Get 15% off on all rides during summer season',
-      discount: 15,
-      discountType: 'percentage',
-      startDate: '2024-06-01',
-      endDate: '2024-08-31',
-      isActive: true,
-      category: 'seasonal'
-    },
-    {
-      id: 3,
-      title: 'New Customer Welcome',
-      description: '20% discount for first-time customers',
-      discount: 20,
-      discountType: 'percentage',
-      startDate: '2024-01-01',
-      endDate: '2024-12-31',
-      isActive: true,
-      category: 'welcome'
-    }
-  ];
-
-  // Auto-rotate offers every 5 seconds
   useEffect(() => {
-    if (activeOffers.length > 1) {
-      const interval = setInterval(() => {
-        setCurrentOfferIndex((prev) => (prev + 1) % activeOffers.length);
-      }, 5000);
+    const fetchOffers = async () => {
+      try {
+        const data = await apiClient.getOffers();
+        const normalizeDate = (value?: string | null) => {
+          if (!value) return '';
+          const text = String(value);
+          return text.includes('T') ? text.split('T')[0] : text;
+        };
 
-      return () => clearInterval(interval);
+        const normalizeOffer = (raw: any): ApiOffer => ({
+          id: raw?.id ?? '',
+          title: raw?.title ?? '',
+          description: raw?.description ?? '',
+          discount:
+            typeof raw?.discount_percent === 'number'
+              ? raw.discount_percent
+              : typeof raw?.discount === 'number'
+              ? raw.discount
+              : 0,
+          discount_type: raw?.discount_type === 'fixed' ? 'fixed' : 'percentage',
+          start_date: normalizeDate(raw?.valid_from ?? raw?.start_date),
+          end_date: normalizeDate(raw?.valid_until ?? raw?.end_date),
+          is_active: typeof raw?.is_active === 'boolean' ? raw.is_active : true,
+          category: raw?.category ?? 'general',
+        });
+
+        setOffers(Array.isArray(data) ? data.map(normalizeOffer) : []);
+      } catch {
+        setOffers([]);
+      }
+    };
+    fetchOffers();
+  }, []);
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const activeOffers = offers.filter((o) => {
+    if (!o.is_active) return false;
+    if (o.start_date && o.end_date) {
+      return o.start_date <= todayStr && todayStr <= o.end_date;
     }
-  }, [activeOffers.length]);
+    return true;
+  });
+  const visibleOffers = activeOffers.filter((offer) => !dismissedIds[String(offer.id)]);
 
-  // Don't show banner if no active offers or user dismissed it
-  if (activeOffers.length === 0 || !isVisible) {
+  if (visibleOffers.length === 0) {
     return null;
   }
-
-  const currentOffer = activeOffers[currentOfferIndex];
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-GB', {
@@ -81,141 +88,100 @@ export default function OffersBanner() {
   };
 
   return (
-    <AnimatePresence>
-      {isVisible && (
-        <motion.div
-          initial={{ opacity: 0, y: -50 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -50 }}
-          transition={{ duration: 0.5 }}
-          className="bg-gradient-to-r from-red-600 via-red-700 to-red-800 text-white relative overflow-hidden"
-        >
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0" style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='m36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-            }} />
-          </div>
-
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between py-3">
-              <div className="flex-1 flex items-center justify-center">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={currentOffer.id}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.3 }}
-                    className="flex items-center space-x-4"
-                  >
-                    {/* Offer Icon */}
-                    <div className="flex-shrink-0">
-                      <div className="bg-white/20 rounded-full p-2">
-                        <Percent className="w-5 h-5" />
-                      </div>
-                    </div>
-
-                    {/* Offer Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-4">
-                        <div>
-                          <p className="font-bold text-lg">
-                            {currentOffer.title} - {currentOffer.discount}
-                            {currentOffer.discountType === 'percentage' ? '%' : '£'} OFF
-                          </p>
-                          <p className="text-red-100 text-sm">
-                            {currentOffer.description}
-                          </p>
-                        </div>
-
-                        {/* Validity */}
-                        <div className="flex items-center text-red-100 text-sm">
-                          <Calendar className="w-4 h-4 mr-1" />
-                          <span>Valid until {formatDate(currentOffer.endDate)}</span>
-                          {isOfferExpiringSoon(currentOffer.endDate) && (
-                            <span className="ml-2 bg-yellow-500 text-yellow-900 px-2 py-1 rounded-full text-xs font-medium">
-                              <Clock className="w-3 h-3 inline mr-1" />
-                              Expires Soon!
-                            </span>
-                          )}
-                        </div>
-
-                        {/* CTA */}
-                        <Link
-                          href="/book"
-                          className="bg-white text-red-600 hover:bg-gray-100 px-4 py-2 rounded-lg font-semibold text-sm transition-colors duration-200 whitespace-nowrap"
-                        >
-                          Book Now
-                        </Link>
-                      </div>
-                    </div>
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-
-              {/* Offer Indicators */}
-              {activeOffers.length > 1 && (
-                <div className="flex space-x-2 mx-4">
-                  {activeOffers.map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setCurrentOfferIndex(index)}
-                      className={`w-2 h-2 rounded-full transition-colors duration-200 ${
-                        index === currentOfferIndex ? 'bg-white' : 'bg-white/40'
-                      }`}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {/* Close Button */}
-              <button
-                onClick={() => setIsVisible(false)}
-                className="flex-shrink-0 text-red-100 hover:text-white transition-colors duration-200 p-1"
-                aria-label="Close banner"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile Layout */}
-          <div className="block sm:hidden">
-            <div className="px-4 pb-3">
-              <AnimatePresence mode="wait">
+    <div className="absolute inset-x-0 top-20 z-40 pointer-events-none">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 pointer-events-auto">
+        <div className="grid gap-3">
+          <AnimatePresence initial={false}>
+            {visibleOffers.map((offer) => {
+              const isExpanded = expandedIds[String(offer.id)] ?? false;
+              return (
                 <motion.div
-                  key={currentOffer.id}
-                  initial={{ opacity: 0, y: 10 }}
+                  key={offer.id}
+                  initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.3 }}
-                  className="text-center"
+                  transition={{ duration: 0.2 }}
+                  className="relative overflow-hidden rounded-2xl border border-red-200/60 dark:border-red-500/30 bg-white/80 dark:bg-gray-900/80 backdrop-blur shadow-sm"
                 >
-                  <p className="font-bold text-lg mb-1">
-                    {currentOffer.title} - {currentOffer.discount}
-                    {currentOffer.discountType === 'percentage' ? '%' : '£'} OFF
-                  </p>
-                  <p className="text-red-100 text-sm mb-3">
-                    {currentOffer.description}
-                  </p>
-                  <div className="flex items-center justify-center space-x-4">
-                    <span className="text-red-100 text-xs">
-                      Valid until {formatDate(currentOffer.endDate)}
-                    </span>
-                    <Link
-                      href="/book"
-                      className="bg-white text-red-600 hover:bg-gray-100 px-4 py-2 rounded-lg font-semibold text-sm transition-colors duration-200"
-                    >
-                      Book Now
-                    </Link>
+                  <div className="absolute inset-0 bg-gradient-to-r from-red-600/10 via-red-500/5 to-transparent pointer-events-none" />
+                  <div className="relative flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:gap-6">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-200">
+                        <Percent className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                          {offer.title} · {offer.discount}% OFF
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">{offer.category}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 text-sm text-gray-700 dark:text-gray-200">
+                      {isExpanded ? offer.description : `${offer.description.slice(0, 80)}${offer.description.length > 80 ? '…' : ''}`}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+                      <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                        <Calendar className="w-4 h-4 mr-1" />
+                        <span>
+                          {offer.end_date ? `Valid until ${formatDate(offer.end_date)}` : 'Limited time'}
+                        </span>
+                        {offer.end_date && isOfferExpiringSoon(offer.end_date) && (
+                          <span className="ml-2 inline-flex items-center rounded-full bg-yellow-100 text-yellow-900 dark:bg-yellow-500/20 dark:text-yellow-200 px-2 py-0.5 text-[10px] font-medium">
+                            <Clock className="w-3 h-3 inline mr-1" />
+                            Expires Soon
+                          </span>
+                        )}
+                      </div>
+                      <Link
+                        href="/book"
+                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors duration-200"
+                      >
+                        Book Now
+                      </Link>
+                      <button
+                        onClick={() =>
+                          setExpandedIds((prev) => ({
+                            ...prev,
+                            [String(offer.id)]: !isExpanded,
+                          }))
+                        }
+                        className="inline-flex items-center text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-300 transition-colors duration-200"
+                        aria-label={isExpanded ? 'Collapse offer' : 'Expand offer'}
+                      >
+                        {isExpanded ? (
+                          <>
+                            <ChevronUp className="w-4 h-4 mr-1" />
+                            Collapse
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="w-4 h-4 mr-1" />
+                            Expand
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() =>
+                          setDismissedIds((prev) => ({
+                            ...prev,
+                            [String(offer.id)]: true,
+                          }))
+                        }
+                        className="inline-flex items-center text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-300 transition-colors duration-200"
+                        aria-label="Dismiss offer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
-              </AnimatePresence>
-            </div>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -1,122 +1,41 @@
-# Vercel Deployment Guide
+# Deployment Guide
 
-## Prisma Build Issue Fix
+## Architecture Update
 
-The main issue with Vercel deployment is that Prisma Client needs to be generated during the build process. This has been fixed with a comprehensive solution:
+**IMPORTANT**: This application has been migrated from Prisma/PostgreSQL to a FastAPI backend.
 
-### 1. Updated package.json scripts
-- `build`: `node build.js` (custom build script)
-- `build:next`: `next build --turbopack`
-- `postinstall`: `prisma generate`
+- **Backend API**: https://kingtaxi-webapp-backend.onrender.com
+- **API Documentation**: https://kingtaxi-webapp-backend.onrender.com/docs
+- **No database setup required** - all data is handled by the FastAPI backend
 
-### 2. Created custom build.js script
-A robust build script that:
-- Generates Prisma Client explicitly
-- Builds Next.js application
-- Provides detailed logging
-- Handles errors gracefully
+## Environment Variables
 
-### 3. Updated Prisma schema
-```prisma
-generator client {
-  provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/client"
-  engineType = "library"
-}
+Set the following environment variable for deployment:
+
+```bash
+NEXT_PUBLIC_API_URL=https://kingtaxi-webapp-backend.onrender.com
 ```
 
-### 4. Created vercel.json configuration
-```json
-{
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
-  "framework": "nextjs",
-  "functions": {
-    "app/api/**/*.ts": {
-      "runtime": "nodejs18.x"
-    }
-  },
-  "build": {
-    "env": {
-      "PRISMA_GENERATE_DATAPROXY": "true",
-      "PRISMA_CLI_BINARY_TARGETS": "native,rhel-openssl-1.0.x"
-    }
-  },
-  "env": {
-    "DATABASE_URL": "@database_url"
-  }
-}
-```
+## Vercel Deployment
 
-### 5. Updated next.config.ts
-```typescript
-const nextConfig: NextConfig = {
-  serverExternalPackages: ['@prisma/client'],
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals.push('@prisma/client');
-    }
-    return config;
-  },
-};
-```
+1. **Connect your repository** to Vercel
+2. **Set environment variables** in Vercel dashboard
+3. **Deploy** - the build process is now simplified without Prisma dependencies
 
-### 3. Environment Variables Setup
+The build should work correctly as all Prisma dependencies have been removed.
 
-**IMPORTANT**: The `vercel.json` no longer references environment variables. You must set them up manually in your Vercel dashboard.
+## Local Development
 
-In your Vercel dashboard, add these environment variables:
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Set environment variables in `.env`
+4. Start development server: `npm run dev`
 
-1. **DATABASE_URL**: Your PostgreSQL connection string
-   - Example: `postgresql://username:password@host:port/database_name`
-   - **Required**: Check all environments (Production, Preview, Development)
+## Build Process
 
-2. **NEXTAUTH_SECRET**: A random secret key for NextAuth
-   - Generate with: `openssl rand -base64 32`
-   - **Optional**: Check all environments
+The build process has been simplified:
+- No database migrations required
+- No Prisma client generation needed
+- Standard Next.js build process
 
-3. **NEXTAUTH_URL**: Your Vercel deployment URL
-   - Example: `https://your-app-name.vercel.app`
-   - **Optional**: Check Production only
-
-**Setup Steps:**
-1. Go to Vercel Dashboard → Your Project → Settings → Environment Variables
-2. Add each variable with the correct values
-3. Make sure to check the appropriate environment boxes
-4. Redeploy your application
-
-### 4. Database Setup
-
-Before deploying, make sure your database is set up:
-
-1. Create a PostgreSQL database (recommended: Supabase, Neon, or Railway)
-2. Run the following commands locally to set up the database:
-   ```bash
-   npm run db:push
-   npm run db:seed
-   ```
-
-### 5. Deployment Steps
-
-1. Push your code to GitHub
-2. Connect your repository to Vercel
-3. Add the environment variables in Vercel dashboard
-4. Deploy
-
-The build should now work correctly with Prisma Client generation.
-
-## Troubleshooting
-
-If you still encounter issues:
-
-1. Check that all environment variables are set correctly
-2. Ensure your database is accessible from Vercel
-3. Check the build logs for any Prisma-related errors
-4. Make sure your database schema is up to date
-
-## Files Modified
-
-- `package.json`: Updated build and postinstall scripts
-- `vercel.json`: Added Vercel-specific configuration
-- `.vercelignore`: Excluded unnecessary files from deployment
-- `build.js`: Alternative build script (optional)
+All data operations are handled through the FastAPI backend via REST API calls.

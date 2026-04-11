@@ -3,14 +3,17 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Car, MapPin, Calculator, Phone } from 'lucide-react';
+import Link from 'next/link';
+import { apiClient } from '@/lib/api';
 
 interface Fare {
-  id: string;
-  fromLocation: string;
-  toLocation: string;
-  vehicleType: 'FOUR_SEATER' | 'EIGHT_SEATER';
+  id: number;
+  route_name: string;
+  pickup_pattern: string;
+  dropoff_pattern: string;
+  vehicle_type: string;
   price: number;
-  isActive: boolean;
+  is_active: boolean;
 }
 
 export default function InteractiveFareTable() {
@@ -25,12 +28,8 @@ export default function InteractiveFareTable() {
 
   const fetchFares = async () => {
     try {
-      const response = await fetch('/api/fares');
-      if (!response.ok) {
-        throw new Error('Failed to fetch fares');
-      }
-      const data = await response.json();
-      setFares(data);
+      const data = await apiClient.getPublicFares();
+      setFares((data as Fare[]).filter((fare) => fare.is_active));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -38,12 +37,8 @@ export default function InteractiveFareTable() {
     }
   };
 
-  const filteredFares = fares.filter(fare => 
-    selectedVehicle === 'ALL' || fare.vehicleType === selectedVehicle
-  );
-
-  const fourSeaterFares = fares.filter(fare => fare.vehicleType === 'FOUR_SEATER');
-  const eightSeaterFares = fares.filter(fare => fare.vehicleType === 'EIGHT_SEATER');
+  const fourSeaterFares = fares.filter((fare) => fare.vehicle_type.toLowerCase().includes('4-seater') || fare.vehicle_type.toLowerCase().includes('4'));
+  const eightSeaterFares = fares.filter((fare) => fare.vehicle_type.toLowerCase().includes('8-seater') || fare.vehicle_type.toLowerCase().includes('8'));
 
   if (loading) {
     return (
@@ -154,10 +149,10 @@ export default function InteractiveFareTable() {
                         <MapPin className="w-5 h-5 text-blue-500 mr-3" />
                         <div>
                           <p className="font-medium text-gray-900 dark:text-white">
-                            {fare.fromLocation} to {fare.toLocation}
+                            {fare.route_name}
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Airport Transfer
+                            {fare.pickup_pattern} → {fare.dropoff_pattern}
                           </p>
                         </div>
                       </div>
@@ -202,10 +197,10 @@ export default function InteractiveFareTable() {
                         <MapPin className="w-5 h-5 text-green-500 mr-3" />
                         <div>
                           <p className="font-medium text-gray-900 dark:text-white">
-                            {fare.fromLocation} to {fare.toLocation}
+                            {fare.route_name}
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Airport Transfer
+                            {fare.pickup_pattern} → {fare.dropoff_pattern}
                           </p>
                         </div>
                       </div>
@@ -235,14 +230,20 @@ export default function InteractiveFareTable() {
               100% guarantee on our services • No extra costs • No hidden charges
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-black text-yellow-500 px-8 py-3 rounded-lg font-bold hover:bg-gray-800 transition-colors flex items-center justify-center">
+              <a
+                href="tel:+4401233367357"
+                className="bg-black text-yellow-500 px-8 py-3 rounded-lg font-bold hover:bg-gray-800 transition-colors flex items-center justify-center"
+              >
                 <Phone className="w-5 h-5 mr-2" />
                 Call Now: +44 01233 367 357
-              </button>
-              <button className="bg-white text-black px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition-colors flex items-center justify-center">
+              </a>
+              <Link
+                href="/book"
+                className="bg-white text-black px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition-colors flex items-center justify-center"
+              >
                 <Calculator className="w-5 h-5 mr-2" />
                 Book Online
-              </button>
+              </Link>
             </div>
           </div>
         </motion.div>

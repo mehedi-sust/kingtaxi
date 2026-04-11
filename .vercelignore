@@ -12,9 +12,6 @@ DATABASE_SETUP.md
 # Development scripts
 setup-db.js
 
-# Database files
-/prisma/migrations/dev.db*
-
 # IDE files
 .vscode/
 .idea/

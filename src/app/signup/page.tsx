@@ -8,10 +8,9 @@ import { User, Mail, Phone, Building, MessageSquare, ArrowRight } from 'lucide-r
 
 export default function SignUp() {
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    fullName: '',
     email: '',
-    mobile: '',
+    phone: '',
     accountType: 'personal',
     message: '',
     password: '',
@@ -44,26 +43,22 @@ export default function SignUp() {
     }
 
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
+      const payload = {
+        phone: formData.phone,
+        password: formData.password,
+        email: formData.email || undefined,
+        full_name: formData.fullName || undefined,
+      };
+      try {
+        await (await import('@/lib/api')).default.register(payload as any);
         setSuccess(true);
         // Redirect to signin page after a short delay
         setTimeout(() => {
           router.push('/signin');
         }, 3000);
-      } else {
-        const errorData = await response.json();
-        if (response.status === 503) {
-          throw new Error(errorData.error);
-        }
-        setError(errorData.error || 'Registration failed. Please try again.');
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Registration failed. Please try again.';
+        setError(msg);
       }
     } catch (error) {
       console.error('Registration error:', error);
@@ -142,39 +137,20 @@ export default function SignUp() {
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    First Name *
+                  <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Full Name *
                   </label>
                   <div className="relative">
                     <User className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
                     <input
                       type="text"
-                      id="firstName"
-                      name="firstName"
-                      value={formData.firstName}
+                      id="fullName"
+                      name="fullName"
+                      value={formData.fullName}
                       onChange={handleInputChange}
                       required
                       className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="Enter your first name"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Last Name *
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      id="lastName"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="Enter your last name"
+                      placeholder="Enter your full name"
                     />
                   </div>
                 </div>
@@ -200,20 +176,20 @@ export default function SignUp() {
               </div>
 
               <div>
-                <label htmlFor="mobile" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Mobile Number *
+                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Phone Number *
                 </label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
                   <input
                     type="tel"
-                    id="mobile"
-                    name="mobile"
-                    value={formData.mobile}
+                    id="phone"
+                    name="phone"
+                    value={formData.phone}
                     onChange={handleInputChange}
                     required
                     className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    placeholder="Enter your mobile number"
+                    placeholder="Enter your phone number (+44...)"
                   />
                 </div>
               </div>

@@ -28,7 +28,7 @@ A modern, responsive web application for King Taxi, a UK-based premium taxi serv
 ### 🛠 Technical Stack
 - **Frontend**: Next.js 15, TypeScript, Tailwind CSS
 - **Animations**: Framer Motion
-- **Database**: PostgreSQL 17 with Prisma ORM
+- **Backend**: FastAPI REST API (https://kingtaxi-webapp-backend.onrender.com)
 - **Icons**: Lucide React
 - **Deployment**: Docker support included
 
@@ -58,26 +58,61 @@ A modern, responsive web application for King Taxi, a UK-based premium taxi serv
    ```
    Update the `.env` file with your database credentials.
 
-4. **Start the database**
+4. **Configure environment variables**
    ```bash
-   docker-compose up -d
+   cp .env.example .env
+   ```
+   Update the `.env` file with the FastAPI backend URL:
+   ```
+   NEXT_PUBLIC_API_URL=https://kingtaxi-webapp-backend.onrender.com
    ```
 
-5. **Set up the database**
-   ```bash
-   npx prisma generate
-   npx prisma migrate dev --name init
-   ```
-
-   **Note:** If you encounter port 5432 conflicts, the database is configured to use port 5433 instead.
-
-6. **Start the development server**
+5. **Start the development server**
    ```bash
    npm run dev
    ```
 
-7. **Open your browser**
+6. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
+
+### Frontend Tests
+
+From the project root, run one of the following commands:
+
+Unit tests (Vitest):
+```bash
+npm run test
+```
+
+Run unit tests once:
+```bash
+npm run test:run
+```
+
+Unit test UI:
+```bash
+npm run test:ui
+```
+
+Unit test coverage:
+```bash
+npm run test:coverage
+```
+
+E2E tests (Playwright):
+```bash
+npm run test:e2e
+```
+
+E2E test UI:
+```bash
+npm run test:e2e:ui
+```
+
+E2E test report:
+```bash
+npm run test:e2e:report
+```
 
 ### Database Setup
 
@@ -111,10 +146,8 @@ kingtaxi-webapp/
 │   │   ├── Reviews.tsx     # Customer testimonials
 │   │   ├── Services.tsx    # Service information
 │   │   └── TaxiFare.tsx    # Fare calculator
-│   └── generated/          # Prisma generated files
-├── prisma/
-│   └── schema.prisma       # Database schema
-├── docker-compose.yml      # Database container config
+│   └── api.ts              # FastAPI client integration
+├── .env.example            # Environment variables template
 └── README.md              # This file
 ```
 
@@ -198,3 +231,49 @@ For support and questions:
 ---
 
 Built with ❤️ by the King Taxi development team
+
+## Backend Integration
+
+This application is designed to work with a FastAPI backend deployed at:
+- **Production**: https://kingtaxi-webapp-backend.onrender.com
+- **API Documentation**: https://kingtaxi-webapp-backend.onrender.com/docs
+
+### API Endpoints Expected:
+- `GET /fares/` - Get all taxi fares
+- `GET /offers/` - Get promotional offers
+- `GET /vehicles/` - Get vehicle fleet
+- `GET /users/` - Get registered users
+- `GET /drivers/` - Get driver applications
+- `GET /stats/` - Get dashboard statistics
+
+### Fallback Data
+If the backend is unavailable, the application will use fallback data for development purposes. Check the browser console for API connection status.
+
+### Testing Backend Connection
+Open browser console and run:
+```javascript
+testBackend()
+```
+
+This will test all API endpoints and show their status.
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"Unexpected token '<', "<!DOCTYPE "... is not valid JSON"**
+   - This means the API endpoint is returning HTML instead of JSON
+   - Check if the backend is running and accessible
+   - Verify the API endpoint URLs are correct
+
+2. **"Failed to fetch" errors**
+   - Check network connectivity
+   - Verify CORS settings on the backend
+   - Ensure the backend URL is correct in environment variables
+
+3. **Build errors with Next.js 16**
+   - Make sure you're using Turbopack configuration instead of webpack
+   - Update all dependencies to latest versions
+
+### Development Mode
+The application includes fallback data for development when the backend is unavailable. This allows frontend development to continue even if the backend is down.

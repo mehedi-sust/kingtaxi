@@ -20,26 +20,38 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import OffersManager from '@/components/OffersManager';
 import FareManager from '@/components/FareManager';
+import VehicleManager from '@/components/VehicleManager';
+import BookingManager from '@/components/BookingManager';
+import { apiClient } from '@/lib/api';
 
 interface User {
   id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  accountType: string;
-  isApproved: boolean;
-  createdAt: string;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  account_type?: string;
+  role?: string;
+  is_approved?: boolean;
+  is_active?: boolean;
+  created_at?: string;
   message?: string;
 }
 
 interface Driver {
   id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  experience: string;
-  isApproved: boolean;
-  createdAt: string;
+  first_name?: string;
+  last_name?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  experience?: string;
+  vehicle_model?: string;
+  vehicle_plate?: string;
+  status?: string;
+  is_approved?: boolean;
+  created_at?: string;
   message?: string;
 }
 
@@ -62,60 +74,55 @@ export default function AdminDashboard() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && (!isAuthenticated || !user?.isAdmin)) {
+    if (!isLoading && (!isAuthenticated)) {
       router.push('/signin');
     }
-  }, [isAuthenticated, user, isLoading, router]);
+  }, [isAuthenticated, isLoading, router]);
 
   useEffect(() => {
     if (isAuthenticated && user?.isAdmin) {
       fetchData();
+      return;
+    }
+    if (isAuthenticated && !user?.isAdmin) {
+      setLoading(false);
     }
   }, [isAuthenticated, user]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [usersRes, driversRes, statsRes] = await Promise.all([
-        fetch('/api/users'),
-        fetch('/api/drivers'),
-        fetch('/api/stats'),
+      const [usersData, driversData, offersData] = await Promise.all([
+        apiClient.getUsers().catch(() => []),
+        apiClient.getDrivers().catch(() => []),
+        apiClient.getAdminOffersAll().catch(() => apiClient.getOffers()).catch(() => []),
       ]);
 
-      // Handle users data
-      if (usersRes.ok) {
-        const usersData = await usersRes.json();
-        setUsers(usersData);
-      } else {
-        console.error('Failed to fetch users:', usersRes.statusText);
-        setUsers([]);
-      }
+      const toTimestamp = (value?: string | null) => {
+        if (!value) return null;
+        const parsed = new Date(String(value));
+        if (Number.isNaN(parsed.getTime())) return null;
+        return parsed.getTime();
+      };
+      const now = Date.now();
+      const activeOffers = Array.isArray(offersData)
+        ? offersData.filter((offer: any) => {
+            const isActiveFlag = offer?.is_active !== false;
+            const start = toTimestamp(offer?.valid_from ?? offer?.start_date ?? null);
+            const end = toTimestamp(offer?.valid_until ?? offer?.end_date ?? null);
+            const afterStart = start === null || start <= now;
+            const beforeEnd = end === null || now <= end;
+            return isActiveFlag && afterStart && beforeEnd;
+          }).length
+        : 0;
 
-      // Handle drivers data
-      if (driversRes.ok) {
-        const driversData = await driversRes.json();
-        setDrivers(driversData);
-      } else {
-        console.error('Failed to fetch drivers:', driversRes.statusText);
-        setDrivers([]);
-      }
-
-      // Handle stats data
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        setStats(statsData.stats || {
-          totalUsers: 0,
-          totalDrivers: 0,
-          activeOffers: 0,
-        });
-      } else {
-        console.error('Failed to fetch stats:', statsRes.statusText);
-        setStats({
-          totalUsers: 0,
-          totalDrivers: 0,
-          activeOffers: 0,
-        });
-      }
+      setUsers(usersData as User[]);
+      setDrivers(driversData as Driver[]);
+      setStats({
+        totalUsers: (usersData as User[]).length,
+        totalDrivers: (driversData as Driver[]).length,
+        activeOffers,
+      });
     } catch (error) {
       console.error('Error fetching data:', error);
       // Set fallback data on error
@@ -143,18 +150,36 @@ export default function AdminDashboard() {
   }
 
 
-  if (!isAuthenticated || !user?.isAdmin) {
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20 flex items-center justify-center">
         <div className="text-center">
           <Shield className="w-16 h-16 text-red-600 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Access Denied</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-4">You need admin privileges to access this page.</p>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">You need to sign in to access this page.</p>
           <button 
             onClick={() => router.push('/signin')}
             className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200"
           >
             Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user?.isAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20 flex items-center justify-center">
+        <div className="text-center">
+          <Shield className="w-16 h-16 text-red-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Access Denied</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">You do not have permission to access the admin dashboard.</p>
+          <button
+            onClick={() => router.push('/')}
+            className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200"
+          >
+            Go Home
           </button>
         </div>
       </div>
@@ -172,22 +197,20 @@ export default function AdminDashboard() {
     { id: 'overview', name: 'Overview', icon: TrendingUp },
     { id: 'users', name: 'Users', icon: Users },
     { id: 'drivers', name: 'Driver Applications', icon: Car },
+    { id: 'vehicles', name: 'Vehicle Management', icon: Car },
     { id: 'fares', name: 'Fare Management', icon: MapPin },
+    { id: 'bookings', name: 'Booking Management', icon: Calendar },
     { id: 'offers', name: 'Offers & Promotions', icon: Calendar },
   ];
 
   const handleUserAction = async (userId: string, action: 'approve' | 'reject') => {
     try {
-      const isApproved = action === 'approve';
-      await fetch('/api/users', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: userId, isApproved }),
-      });
+      const is_approved = action === 'approve';
+      await apiClient.updateUser(userId, { is_approved });
       
       // Update local state
       setUsers(users.map(user => 
-        user.id === userId ? { ...user, isApproved } : user
+        user.id === userId ? { ...user, is_approved } : user
       ));
     } catch (error) {
       console.error('Error updating user:', error);
@@ -197,16 +220,12 @@ export default function AdminDashboard() {
   const handleDriverAction = async (driverId: string, action: 'approve' | 'reject' | 'review') => {
     try {
       if (action === 'approve' || action === 'reject') {
-        const isApproved = action === 'approve';
-        await fetch('/api/drivers', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: driverId, isApproved }),
-        });
+        const is_approved = action === 'approve';
+        await apiClient.updateDriver(driverId, { is_approved });
         
         // Update local state
         setDrivers(drivers.map(driver => 
-          driver.id === driverId ? { ...driver, isApproved } : driver
+          driver.id === driverId ? { ...driver, is_approved } : driver
         ));
       }
     } catch (error) {
@@ -231,6 +250,60 @@ export default function AdminDashboard() {
 
   const goToDriversPage = (page: number) => {
     setDriversPage(Math.max(1, Math.min(page, driversTotalPages)));
+  };
+
+  const formatDate = (value?: string) => {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString();
+  };
+
+  const getUserDisplayName = (value: User) => {
+    const fullName = value.full_name?.trim();
+    if (fullName) return fullName;
+    const firstName = value.first_name?.trim() || '';
+    const lastName = value.last_name?.trim() || '';
+    const combined = `${firstName} ${lastName}`.trim();
+    if (combined) return combined;
+    return value.phone || value.email || 'Unknown User';
+  };
+
+  const getDriverDisplayName = (value: Driver) => {
+    const name = value.name?.trim();
+    if (name) return name;
+    const firstName = value.first_name?.trim() || '';
+    const lastName = value.last_name?.trim() || '';
+    const combined = `${firstName} ${lastName}`.trim();
+    if (combined) return combined;
+    return value.phone || value.email || 'Unknown Driver';
+  };
+
+  const getUserType = (value: User) => {
+    return value.account_type || value.role || 'customer';
+  };
+
+  const getUserStatusLabel = (value: User) => {
+    if (typeof value.is_approved === 'boolean') {
+      return value.is_approved ? 'Approved' : 'Pending';
+    }
+    if (typeof value.is_active === 'boolean') {
+      return value.is_active ? 'Active' : 'Inactive';
+    }
+    return 'Unknown';
+  };
+
+  const isUserApproved = (value: User) => {
+    if (typeof value.is_approved === 'boolean') return value.is_approved;
+    if (typeof value.is_active === 'boolean') return value.is_active;
+    return false;
+  };
+
+  const getDriverExperience = (value: Driver) => {
+    if (value.experience?.trim()) return value.experience;
+    if (value.vehicle_model?.trim()) return `Vehicle: ${value.vehicle_model}`;
+    if (value.status?.trim()) return `Status: ${value.status}`;
+    return 'Not provided';
   };
 
   return (
@@ -313,15 +386,15 @@ export default function AdminDashboard() {
                     {users.slice(0, 3).map((user) => (
                       <div key={user.id} className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{user.firstName} {user.lastName}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
+                          <p className="font-medium text-gray-900 dark:text-white">{getUserDisplayName(user)}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{user.email || user.phone || '-'}</p>
                         </div>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          user.isApproved 
+                          isUserApproved(user)
                             ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
                             : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                         }`}>
-                          {user.isApproved ? 'Approved' : 'Pending'}
+                          {getUserStatusLabel(user)}
                         </span>
                       </div>
                     ))}
@@ -338,15 +411,15 @@ export default function AdminDashboard() {
                     {drivers.slice(0, 3).map((driver) => (
                       <div key={driver.id} className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{driver.firstName} {driver.lastName}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{driver.experience} experience</p>
+                          <p className="font-medium text-gray-900 dark:text-white">{getDriverDisplayName(driver)}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{getDriverExperience(driver)}</p>
                         </div>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          driver.isApproved 
+                          driver.is_approved 
                             ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
                             : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                         }`}>
-                          {driver.isApproved ? 'Approved' : 'Pending'}
+                          {driver.is_approved ? 'Approved' : 'Pending'}
                         </span>
                       </div>
                     ))}
@@ -389,26 +462,26 @@ export default function AdminDashboard() {
                       <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">{user.firstName} {user.lastName}</div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{getUserDisplayName(user)}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">{user.email || user.phone || '-'}</div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                            {user.accountType}
+                            {getUserType(user)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            user.isApproved 
+                            isUserApproved(user)
                               ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
                               : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                           }`}>
-                            {user.isApproved ? 'Approved' : 'Pending'}
+                            {getUserStatusLabel(user)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                          {new Date(user.createdAt).toLocaleDateString()}
+                          {formatDate(user.created_at)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
@@ -418,7 +491,7 @@ export default function AdminDashboard() {
                             >
                               <Eye className="w-4 h-4" />
                             </button>
-                            {!user.isApproved && (
+                            {!isUserApproved(user) && (
                               <>
                                 <button 
                                   onClick={() => handleUserAction(user.id, 'approve')}
@@ -512,28 +585,28 @@ export default function AdminDashboard() {
                       <tr key={driver.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">{driver.firstName} {driver.lastName}</div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">{driver.email}</div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{getDriverDisplayName(driver)}</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">{driver.email || driver.phone || '-'}</div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {driver.experience}
+                          {getDriverExperience(driver)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           Full-time
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            driver.isApproved 
+                            driver.is_approved 
                               ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
                               : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                           }`}>
-                            {driver.isApproved ? 'Approved' : 'Pending'}
+                            {driver.is_approved ? 'Approved' : 'Pending'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
-                            {!driver.isApproved && (
+                            {!driver.is_approved && (
                               <>
                                 <button 
                                   onClick={() => handleDriverAction(driver.id, 'approve')}
@@ -606,6 +679,28 @@ export default function AdminDashboard() {
           </motion.div>
         )}
 
+        {/* Bookings Tab */}
+        {activeTab === 'bookings' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <BookingManager />
+          </motion.div>
+        )}
+
+        {/* Vehicles Tab */}
+        {activeTab === 'vehicles' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <VehicleManager />
+          </motion.div>
+        )}
+
         {/* Fares Tab */}
         {activeTab === 'fares' && (
           <motion.div
@@ -649,19 +744,19 @@ export default function AdminDashboard() {
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</label>
-                  <p className="text-gray-900 dark:text-white">{selectedUser.firstName} {selectedUser.lastName}</p>
+                  <p className="text-gray-900 dark:text-white">{getUserDisplayName(selectedUser)}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</label>
-                  <p className="text-gray-900 dark:text-white">{selectedUser.email}</p>
+                  <p className="text-gray-900 dark:text-white">{selectedUser.email || selectedUser.phone || '-'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Account Type</label>
-                  <p className="text-gray-900 dark:text-white">{selectedUser.accountType}</p>
+                  <p className="text-gray-900 dark:text-white">{getUserType(selectedUser)}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
-                  <p className="text-gray-900 dark:text-white">{selectedUser.isApproved ? 'Approved' : 'Pending'}</p>
+                  <p className="text-gray-900 dark:text-white">{getUserStatusLabel(selectedUser)}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Message</label>
@@ -669,10 +764,10 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Registration Date</label>
-                  <p className="text-gray-900 dark:text-white">{new Date(selectedUser.createdAt).toLocaleDateString()}</p>
+                  <p className="text-gray-900 dark:text-white">{formatDate(selectedUser.created_at)}</p>
                 </div>
               </div>
-              {!selectedUser.isApproved && (
+              {!isUserApproved(selectedUser) && (
                 <div className="flex space-x-3 mt-6">
                   <button 
                     onClick={() => {

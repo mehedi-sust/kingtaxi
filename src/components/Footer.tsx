@@ -7,8 +7,8 @@ import { Facebook, Twitter, Instagram, Youtube, Phone, Mail, MapPin } from 'luci
 
 export default function Footer() {
   const socialLinks = [
-    { name: 'Facebook', icon: Facebook, href: '#', color: 'hover:text-blue-600' },
-    { name: 'Twitter', icon: Twitter, href: '#', color: 'hover:text-blue-400' },
+    { name: 'Facebook', icon: Facebook, href: 'https://www.facebook.com/KingTaxiAshford/', color: 'hover:text-blue-600' },
+    { name: 'Twitter', icon: Twitter, href: 'https://x.com/kingtaxiashford', color: 'hover:text-blue-400' },
     { name: 'Instagram', icon: Instagram, href: '#', color: 'hover:text-pink-600' },
     { name: 'YouTube', icon: Youtube, href: '#', color: 'hover:text-red-600' },
   ];
@@ -23,7 +23,7 @@ export default function Footer() {
   ];
 
   return (
-    <footer className="bg-gray-900 text-white">
+    <footer className="bg-gray-900 text-white relative overflow-hidden isolate transform-gpu">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Company Info */}
@@ -61,11 +61,14 @@ export default function Footer() {
             <div className="space-y-3">
               <div className="flex items-center space-x-3 text-gray-300">
                 <MapPin size={16} className="text-red-600 flex-shrink-0" />
-                <span className="text-sm">2 field end, Ashford, Kent, UK, TN24 0AP</span>
+                <span className="text-sm">Ashford, Kent, UK</span>
+                {/* 2 field end, Ashford, Kent, UK, TN24 0AP */}
               </div>
               <div className="flex items-center space-x-3 text-gray-300">
                 <Phone size={16} className="text-red-600 flex-shrink-0" />
-                <span className="text-sm">+44 01233 367 357</span>
+                <a href="tel:+4401233367357" className="text-sm hover:underline">
+                  +44 01233 367 357
+                </a>
               </div>
               <div className="flex items-center space-x-3 text-gray-300">
                 <Mail size={16} className="text-red-600 flex-shrink-0" />

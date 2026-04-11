@@ -34,6 +34,7 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env
 
 # Keep .env.example for reference
 !.env.example
@@ -44,10 +45,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# prisma
-/src/generated/prisma
-/prisma/migrations/dev.db*
 
 # IDE
 .vscode/

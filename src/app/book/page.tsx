@@ -3,24 +3,26 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Calendar, Clock, Users, Phone, Car, CreditCard, CheckCircle } from 'lucide-react';
+import { apiClient } from '@/lib/api';
 
 export default function BookRide() {
   const [step, setStep] = useState(1);
   const [bookingData, setBookingData] = useState({
-    pickupLocation: '',
+    pickup_location: '',
     destination: '',
-    date: '',
-    time: '',
+    pickup_date: '',
+    pickup_time: '',
     passengers: '1',
-    vehicleType: '',
-    specialRequests: '',
-    contactName: '',
-    contactPhone: '',
-    contactEmail: '',
+    vehicle_type: '',
+    special_requests: '',
+    contact_name: '',
+    contact_phone: '',
+    contact_email: '',
   });
 
   const [estimatedFare, setEstimatedFare] = useState<number | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const vehicleTypes = [
     {
@@ -49,23 +51,15 @@ export default function BookRide() {
     },
   ];
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setBookingData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
   const calculateFare = async () => {
-    if (!bookingData.pickupLocation || !bookingData.destination) return;
+    if (!bookingData.pickup_location || !bookingData.destination) return;
     
     setIsCalculating(true);
     // Simulate fare calculation
     await new Promise(resolve => setTimeout(resolve, 1500));
     
-    const baseFare = bookingData.vehicleType === 'executive' ? 5.0 : 
-                    bookingData.vehicleType === 'minibus' ? 8.0 : 3.5;
+    const baseFare = bookingData.vehicle_type === 'executive' ? 5.0 : 
+                    bookingData.vehicle_type === 'minibus' ? 8.0 : 3.5;
     const estimatedDistance = Math.random() * 20 + 5; // Random distance 5-25 miles
     const fare = baseFare + (estimatedDistance * 2.2);
     
@@ -74,7 +68,7 @@ export default function BookRide() {
   };
 
   const nextStep = () => {
-    if (step === 1 && bookingData.pickupLocation && bookingData.destination && bookingData.vehicleType) {
+    if (step === 1 && bookingData.pickup_location && bookingData.destination && bookingData.vehicle_type) {
       calculateFare();
     }
     setStep(prev => Math.min(prev + 1, 3));
@@ -86,9 +80,35 @@ export default function BookRide() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate booking submission
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setStep(4); // Success step
+    setSubmitError(null);
+    try {
+      const dateTimeIso = new Date(
+        `${bookingData.pickup_date}T${bookingData.pickup_time}:00`
+      ).toISOString();
+      const vehicleName =
+        bookingData.vehicle_type === 'executive'
+          ? 'Executive Sedan'
+          : bookingData.vehicle_type === 'minibus'
+          ? '8-Seater Minibus'
+          : '4-Seater Premium Sedan';
+      await apiClient.createBooking({
+        customer_phone: bookingData.contact_phone,
+        pickup_address: bookingData.pickup_location,
+        dropoff_address: bookingData.destination,
+        pickup_lat: 0,
+        pickup_lng: 0,
+        dropoff_lat: 0,
+        dropoff_lng: 0,
+        pickup_time: dateTimeIso,
+        trip_type: 'STANDARD',
+        vehicle_type: vehicleName,
+        notes: bookingData.special_requests || undefined,
+      });
+      setStep(4); // Success step
+    } catch (error) {
+      console.error('Booking failed:', error);
+      setSubmitError(error instanceof Error ? error.message : 'Booking failed. Please try again.');
+    }
   };
 
   if (step === 4) {
@@ -110,11 +130,11 @@ export default function BookRide() {
           <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6 text-left">
             <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Booking Details:</h3>
             <div className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
-              <p><strong>From:</strong> {bookingData.pickupLocation}</p>
+              <p><strong>From:</strong> {bookingData.pickup_location}</p>
               <p><strong>To:</strong> {bookingData.destination}</p>
-              <p><strong>Date:</strong> {bookingData.date}</p>
-              <p><strong>Time:</strong> {bookingData.time}</p>
-              <p><strong>Vehicle:</strong> {vehicleTypes.find(v => v.id === bookingData.vehicleType)?.name}</p>
+              <p><strong>Date:</strong> {bookingData.pickup_date}</p>
+              <p><strong>Time:</strong> {bookingData.pickup_time}</p>
+              <p><strong>Vehicle:</strong> {vehicleTypes.find(v => v.id === bookingData.vehicle_type)?.name}</p>
               {estimatedFare && <p><strong>Estimated Fare:</strong> £{estimatedFare}</p>}
             </div>
           </div>
@@ -195,8 +215,8 @@ export default function BookRide() {
                         type="text"
                         id="pickupLocation"
                         name="pickupLocation"
-                        value={bookingData.pickupLocation}
-                        onChange={handleInputChange}
+                        value={bookingData.pickup_location}
+                        onChange={(e) => setBookingData(prev => ({ ...prev, pickup_location: e.target.value }))}
                         required
                         className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                         placeholder="Enter pickup address"
@@ -215,7 +235,7 @@ export default function BookRide() {
                         id="destination"
                         name="destination"
                         value={bookingData.destination}
-                        onChange={handleInputChange}
+                        onChange={(e) => setBookingData(prev => ({ ...prev, destination: e.target.value }))}
                         required
                         className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                         placeholder="Enter destination address"
@@ -235,8 +255,8 @@ export default function BookRide() {
                         type="date"
                         id="date"
                         name="date"
-                        value={bookingData.date}
-                        onChange={handleInputChange}
+                        value={bookingData.pickup_date}
+                        onChange={(e) => setBookingData(prev => ({ ...prev, pickup_date: e.target.value }))}
                         required
                         min={new Date().toISOString().split('T')[0]}
                         className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
@@ -254,8 +274,8 @@ export default function BookRide() {
                         type="time"
                         id="time"
                         name="time"
-                        value={bookingData.time}
-                        onChange={handleInputChange}
+                        value={bookingData.pickup_time}
+                        onChange={(e) => setBookingData(prev => ({ ...prev, pickup_time: e.target.value }))}
                         required
                         className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                       />
@@ -272,7 +292,7 @@ export default function BookRide() {
                         id="passengers"
                         name="passengers"
                         value={bookingData.passengers}
-                        onChange={handleInputChange}
+                        onChange={(e) => setBookingData(prev => ({ ...prev, passengers: e.target.value }))}
                         required
                         className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 bg-white dark:bg-gray-700 dark:text-white"
                       >
@@ -293,11 +313,11 @@ export default function BookRide() {
                       <div
                         key={vehicle.id}
                         className={`border-2 rounded-lg p-4 cursor-pointer transition-all duration-200 ${
-                          bookingData.vehicleType === vehicle.id
+                          bookingData.vehicle_type === vehicle.id
                             ? 'border-red-600 bg-red-50 dark:bg-red-900/20'
                             : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
                         }`}
-                        onClick={() => setBookingData(prev => ({ ...prev, vehicleType: vehicle.id }))}
+                        onClick={() => setBookingData(prev => ({ ...prev, vehicle_type: vehicle.id }))}
                       >
                         <div className="flex items-center mb-3">
                           <vehicle.icon className="w-6 h-6 text-red-600 mr-2" />
@@ -354,8 +374,8 @@ export default function BookRide() {
                     type="text"
                     id="contactName"
                     name="contactName"
-                    value={bookingData.contactName}
-                    onChange={handleInputChange}
+                    value={bookingData.contact_name}
+                    onChange={(e) => setBookingData(prev => ({ ...prev, contact_name: e.target.value }))}
                     required
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                     placeholder="Enter your full name"
@@ -373,8 +393,8 @@ export default function BookRide() {
                         type="tel"
                         id="contactPhone"
                         name="contactPhone"
-                        value={bookingData.contactPhone}
-                        onChange={handleInputChange}
+                        value={bookingData.contact_phone}
+                        onChange={(e) => setBookingData(prev => ({ ...prev, contact_phone: e.target.value }))}
                         required
                         className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                         placeholder="Enter your phone number"
@@ -390,8 +410,8 @@ export default function BookRide() {
                       type="email"
                       id="contactEmail"
                       name="contactEmail"
-                      value={bookingData.contactEmail}
-                      onChange={handleInputChange}
+                      value={bookingData.contact_email}
+                      onChange={(e) => setBookingData(prev => ({ ...prev, contact_email: e.target.value }))}
                       className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                       placeholder="Enter your email (optional)"
                     />
@@ -405,8 +425,8 @@ export default function BookRide() {
                   <textarea
                     id="specialRequests"
                     name="specialRequests"
-                    value={bookingData.specialRequests}
-                    onChange={handleInputChange}
+                    value={bookingData.special_requests}
+                    onChange={(e) => setBookingData(prev => ({ ...prev, special_requests: e.target.value }))}
                     rows={3}
                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 resize-none dark:bg-gray-700 dark:text-white"
                     placeholder="Any special requirements? (child seat, wheelchair access, etc.)"
@@ -432,7 +452,7 @@ export default function BookRide() {
                     <div className="space-y-3">
                       <div>
                         <span className="text-sm text-gray-600 dark:text-gray-300">From:</span>
-                        <p className="font-medium text-gray-900 dark:text-white">{bookingData.pickupLocation}</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{bookingData.pickup_location}</p>
                       </div>
                       <div>
                         <span className="text-sm text-gray-600 dark:text-gray-300">To:</span>
@@ -440,7 +460,7 @@ export default function BookRide() {
                       </div>
                       <div>
                         <span className="text-sm text-gray-600 dark:text-gray-300">Date & Time:</span>
-                        <p className="font-medium text-gray-900 dark:text-white">{bookingData.date} at {bookingData.time}</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{bookingData.pickup_date} at {bookingData.pickup_time}</p>
                       </div>
                     </div>
                     <div className="space-y-3">
@@ -450,12 +470,12 @@ export default function BookRide() {
                       </div>
                       <div>
                         <span className="text-sm text-gray-600 dark:text-gray-300">Vehicle:</span>
-                        <p className="font-medium text-gray-900 dark:text-white">{vehicleTypes.find(v => v.id === bookingData.vehicleType)?.name}</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{vehicleTypes.find(v => v.id === bookingData.vehicle_type)?.name}</p>
                       </div>
                       <div>
                         <span className="text-sm text-gray-600 dark:text-gray-300">Contact:</span>
-                        <p className="font-medium text-gray-900 dark:text-white">{bookingData.contactName}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">{bookingData.contactPhone}</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{bookingData.contact_name}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">{bookingData.contact_phone}</p>
                       </div>
                     </div>
                   </div>
@@ -495,6 +515,16 @@ export default function BookRide() {
           )}
 
           {/* Navigation Buttons */}
+          {submitError && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-4 py-3"
+            >
+              {submitError}
+            </motion.div>
+          )}
+
           <div className="flex justify-between mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
             {step > 1 && (
               <button
@@ -510,8 +540,8 @@ export default function BookRide() {
                 <button
                   onClick={nextStep}
                   disabled={
-                    (step === 1 && (!bookingData.pickupLocation || !bookingData.destination || !bookingData.date || !bookingData.time || !bookingData.vehicleType)) ||
-                    (step === 2 && (!bookingData.contactName || !bookingData.contactPhone))
+                    (step === 1 && (!bookingData.pickup_location || !bookingData.destination || !bookingData.pickup_date || !bookingData.pickup_time || !bookingData.vehicle_type)) ||
+                    (step === 2 && (!bookingData.contact_name || !bookingData.contact_phone))
                   }
                   className="px-8 py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors duration-200"
                 >

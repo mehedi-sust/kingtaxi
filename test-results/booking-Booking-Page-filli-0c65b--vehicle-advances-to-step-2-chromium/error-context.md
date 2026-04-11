@@ -1,0 +1,195 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [active]:
+    - menu "Next.js Dev Tools Items" [ref=e2]:
+      - generic [ref=e3]:
+        - menuitem "Route Static" [ref=e4] [cursor=pointer]:
+          - generic [ref=e5]: Route
+          - generic [ref=e6]: Static
+        - generic "Turbopack is enabled." [ref=e7]:
+          - generic [ref=e8]: Bundler
+          - generic [ref=e9]: Turbopack
+        - menuitem "Route Info" [ref=e10]:
+          - generic [ref=e11]: Route Info
+          - img [ref=e13]
+      - menuitem "Preferences" [ref=e16]:
+        - generic [ref=e17]: Preferences
+        - img [ref=e19]
+    - button "Close Next.js Dev Tools" [expanded] [ref=e26] [cursor=pointer]:
+      - img [ref=e27]
+  - alert [ref=e30]
+  - navigation [ref=e31]:
+    - generic [ref=e34]:
+      - link "King Taxi Logo" [ref=e36] [cursor=pointer]:
+        - /url: /
+        - img "King Taxi Logo" [ref=e37]
+      - generic [ref=e39]:
+        - link "Home" [ref=e41] [cursor=pointer]:
+          - /url: /
+          - text: Home
+        - link "Book Now" [ref=e43] [cursor=pointer]:
+          - /url: /book
+          - text: Book Now
+        - link "About Us" [ref=e45] [cursor=pointer]:
+          - /url: /about
+          - text: About Us
+        - link "Picture Gallery" [ref=e47] [cursor=pointer]:
+          - /url: /gallery
+          - text: Picture Gallery
+        - link "Join Our Driving Team" [ref=e49] [cursor=pointer]:
+          - /url: /driver-application
+          - text: Join Our Driving Team
+      - generic [ref=e50]:
+        - button "Toggle theme" [ref=e51] [cursor=pointer]:
+          - img
+          - generic [ref=e52]: Toggle theme
+        - link "Sign In" [ref=e53] [cursor=pointer]:
+          - /url: /signin
+        - link "Sign Up" [ref=e54] [cursor=pointer]:
+          - /url: /signup
+  - main [ref=e55]:
+    - generic [ref=e57]:
+      - generic [ref=e58]:
+        - heading "Book Your Ride" [level=1] [ref=e59]
+        - paragraph [ref=e60]: Quick and easy booking process. Get an instant quote and confirm your journey in just a few steps.
+      - generic [ref=e62]:
+        - generic [ref=e64]: "1"
+        - generic [ref=e67]: "2"
+        - generic [ref=e70]: "3"
+      - generic [ref=e71]:
+        - generic [ref=e72]:
+          - heading "Journey Details" [level=2] [ref=e73]
+          - generic [ref=e74]:
+            - generic [ref=e75]:
+              - generic [ref=e76]:
+                - generic [ref=e77]: Pickup Location *
+                - generic [ref=e78]:
+                  - img [ref=e79]
+                  - textbox "Pickup Location *" [ref=e82]:
+                    - /placeholder: Enter pickup address
+              - generic [ref=e83]:
+                - generic [ref=e84]: Destination *
+                - generic [ref=e85]:
+                  - img [ref=e86]
+                  - textbox "Destination *" [ref=e89]:
+                    - /placeholder: Enter destination address
+                    - text: Heathrow Airport
+                - button "Heathrow Airport, Lord Knyvetts Court, Stanwell, Borough of Spelthorne, Surrey, England, TW19 7JH, United Kingdom" [ref=e91] [cursor=pointer]
+            - generic [ref=e92]:
+              - generic [ref=e93]:
+                - generic [ref=e94]: Date *
+                - generic [ref=e95]:
+                  - img [ref=e96]
+                  - textbox "Date *" [ref=e98]: 2026-03-07
+              - generic [ref=e99]:
+                - generic [ref=e100]: Time *
+                - generic [ref=e101]:
+                  - img [ref=e102]
+                  - textbox "Time *" [ref=e105]: 09:00
+              - generic [ref=e106]:
+                - generic [ref=e107]: Passengers *
+                - generic [ref=e108]:
+                  - img [ref=e109]
+                  - combobox "Passengers *" [ref=e114]:
+                    - option "1 passenger" [selected]
+                    - option "2 passengers"
+                    - option "3 passengers"
+                    - option "4 passengers"
+                    - option "5 passengers"
+                    - option "6 passengers"
+                    - option "7 passengers"
+                    - option "8 passengers"
+            - generic [ref=e115]:
+              - generic [ref=e116]: Vehicle Type *
+              - generic [ref=e117]:
+                - generic [ref=e118] [cursor=pointer]:
+                  - generic [ref=e119]:
+                    - img [ref=e120]
+                    - heading "Standard Car" [level=3] [ref=e124]
+                  - paragraph [ref=e125]: Comfortable sedan for up to 4 passengers
+                  - generic [ref=e126]:
+                    - generic [ref=e127]: 1-4 passengers
+                    - generic [ref=e128]: From £3.50
+                - generic [ref=e129] [cursor=pointer]:
+                  - generic [ref=e130]:
+                    - img [ref=e131]
+                    - heading "Executive Car" [level=3] [ref=e135]
+                  - paragraph [ref=e136]: Premium luxury vehicle for business travel
+                  - generic [ref=e137]:
+                    - generic [ref=e138]: 1-4 passengers
+                    - generic [ref=e139]: From £5.00
+                - generic [ref=e140] [cursor=pointer]:
+                  - generic [ref=e141]:
+                    - img [ref=e142]
+                    - heading "Minibus" [level=3] [ref=e147]
+                  - paragraph [ref=e148]: Spacious vehicle for group travel
+                  - generic [ref=e149]:
+                    - generic [ref=e150]: 5-8 passengers
+                    - generic [ref=e151]: From £8.00
+        - button "Continue" [disabled] [ref=e154]
+  - contentinfo [ref=e155]:
+    - generic [ref=e156]:
+      - generic [ref=e157]:
+        - generic [ref=e158]:
+          - img "King Taxi Logo" [ref=e160]
+          - paragraph [ref=e161]: Premium taxi service in the UK offering reliable, punctual, and quality transportation with trusted drivers and modern vehicles.
+        - generic [ref=e162]:
+          - heading "Contact Us" [level=4] [ref=e163]
+          - generic [ref=e164]:
+            - generic [ref=e165]:
+              - img [ref=e166]
+              - generic [ref=e169]: Ashford, Kent, UK
+            - generic [ref=e170]:
+              - img [ref=e171]
+              - link "+44 01233 367 357" [ref=e173] [cursor=pointer]:
+                - /url: tel:+4401233367357
+            - generic [ref=e174]:
+              - img [ref=e175]
+              - generic [ref=e178]: info@kingtaxi.co.uk
+        - generic [ref=e179]:
+          - heading "Quick Links" [level=4] [ref=e180]
+          - generic [ref=e181]:
+            - link "Home" [ref=e182] [cursor=pointer]:
+              - /url: /
+            - link "About Us" [ref=e183] [cursor=pointer]:
+              - /url: /about
+            - link "Services" [ref=e184] [cursor=pointer]:
+              - /url: /services
+            - link "Book Now" [ref=e185] [cursor=pointer]:
+              - /url: /book
+            - link "Gallery" [ref=e186] [cursor=pointer]:
+              - /url: /gallery
+            - link "Contact" [ref=e187] [cursor=pointer]:
+              - /url: /contact
+        - generic [ref=e188]:
+          - heading "Follow Us" [level=4] [ref=e189]
+          - generic [ref=e190]:
+            - link "Facebook" [ref=e191] [cursor=pointer]:
+              - /url: https://www.facebook.com/KingTaxiAshford/
+              - img [ref=e192]
+            - link "Twitter" [ref=e194] [cursor=pointer]:
+              - /url: https://x.com/kingtaxiashford
+              - img [ref=e195]
+            - link "Instagram" [ref=e197] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e198]
+            - link "YouTube" [ref=e201] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e202]
+          - generic [ref=e205]:
+            - heading "Operating Hours" [level=5] [ref=e206]
+            - generic [ref=e207]:
+              - paragraph [ref=e208]: 24/7 Service Available
+              - paragraph [ref=e209]: Emergency Bookings Welcome
+      - generic [ref=e211]:
+        - paragraph [ref=e212]: © 2026 King Taxi. All rights reserved.
+        - generic [ref=e213]:
+          - link "Privacy Policy" [ref=e214] [cursor=pointer]:
+            - /url: /privacy
+          - link "Terms of Service" [ref=e215] [cursor=pointer]:
+            - /url: /terms
+          - link "Cookie Policy" [ref=e216] [cursor=pointer]:
+            - /url: /cookies
+```

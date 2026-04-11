@@ -3,54 +3,61 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Edit, Trash2, Save, X, Car, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
+import { apiClient } from '@/lib/api';
 
 interface Fare {
-  id: string;
-  fromLocation: string;
-  toLocation: string;
-  vehicleType: 'FOUR_SEATER' | 'EIGHT_SEATER';
+  id: number;
+  route_name: string;
+  pickup_pattern: string;
+  dropoff_pattern: string;
+  vehicle_type: string;
   price: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  is_active: boolean;
 }
 
 interface FareForm {
-  fromLocation: string;
-  toLocation: string;
-  vehicleType: 'FOUR_SEATER' | 'EIGHT_SEATER';
+  route_name: string;
+  pickup_pattern: string;
+  dropoff_pattern: string;
+  vehicle_type: string;
   price: string;
-  isActive: boolean;
+  is_active: boolean;
 }
 
 export default function FareManager() {
   const [fares, setFares] = useState<Fare[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [formData, setFormData] = useState<FareForm>({
-    fromLocation: '',
-    toLocation: '',
-    vehicleType: 'FOUR_SEATER',
+    route_name: '',
+    pickup_pattern: '',
+    dropoff_pattern: '',
+    vehicle_type: '4-Seater Premium Sedan',
     price: '',
-    isActive: true
+    is_active: true
   });
 
   useEffect(() => {
     fetchFares();
   }, []);
 
+  useEffect(() => {
+    if (!showModal) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [showModal]);
+
   const fetchFares = async () => {
     try {
-      const response = await fetch('/api/admin/fares');
-      if (!response.ok) {
-        throw new Error('Failed to fetch fares');
-      }
-      const data = await response.json();
-      setFares(data);
+      const data = await apiClient.getFares();
+      setFares(data as Fare[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -61,7 +68,7 @@ export default function FareManager() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.fromLocation || !formData.toLocation || !formData.price) {
+    if (!formData.route_name || !formData.pickup_pattern || !formData.dropoff_pattern || !formData.price) {
       setError('Please fill in all required fields');
       return;
     }
@@ -73,23 +80,15 @@ export default function FareManager() {
     }
 
     try {
-      const url = editingId ? `/api/admin/fares/${editingId}` : '/api/admin/fares';
-      const method = editingId ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...formData,
-          price
-        }),
-      });
+      const fareData = {
+        ...formData,
+        price
+      };
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save fare');
+      if (editingId) {
+        await apiClient.updateFare(editingId, fareData);
+      } else {
+        await apiClient.createFare(fareData);
       }
 
       await fetchFares();
@@ -102,30 +101,24 @@ export default function FareManager() {
 
   const handleEdit = (fare: Fare) => {
     setFormData({
-      fromLocation: fare.fromLocation,
-      toLocation: fare.toLocation,
-      vehicleType: fare.vehicleType,
+      route_name: fare.route_name,
+      pickup_pattern: fare.pickup_pattern,
+      dropoff_pattern: fare.dropoff_pattern,
+      vehicle_type: fare.vehicle_type,
       price: fare.price.toString(),
-      isActive: fare.isActive
+      is_active: fare.is_active
     });
     setEditingId(fare.id);
     setShowModal(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this fare?')) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/admin/fares/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete fare');
-      }
-
+      await apiClient.deleteFare(id);
       await fetchFares();
       setError(null);
     } catch (err) {
@@ -135,11 +128,12 @@ export default function FareManager() {
 
   const resetForm = () => {
     setFormData({
-      fromLocation: '',
-      toLocation: '',
-      vehicleType: 'FOUR_SEATER',
+      route_name: '',
+      pickup_pattern: '',
+      dropoff_pattern: '',
+      vehicle_type: '4-Seater Premium Sedan',
       price: '',
-      isActive: true
+      is_active: true
     });
     setEditingId(null);
     setShowModal(false);
@@ -168,7 +162,7 @@ export default function FareManager() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Fare Management</h2>
-          <p className="text-gray-600 dark:text-gray-300">Manage taxi fares and pricing for different routes</p>
+          <p className="text-gray-600 dark:text-gray-300">Manage fixed fare routes used by fare estimation</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
@@ -196,9 +190,9 @@ export default function FareManager() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col max-h-[70vh]"
       >
-        <div className="overflow-x-auto">
+        <div className="overflow-auto flex-1">
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
@@ -227,7 +221,10 @@ export default function FareManager() {
                       <MapPin className="w-4 h-4 text-gray-400 mr-2" />
                       <div>
                         <div className="text-sm font-medium text-gray-900 dark:text-white">
-                          {fare.fromLocation} → {fare.toLocation}
+                          {fare.route_name}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {fare.pickup_pattern} → {fare.dropoff_pattern}
                         </div>
                       </div>
                     </div>
@@ -236,7 +233,7 @@ export default function FareManager() {
                     <div className="flex items-center">
                       <Car className="w-4 h-4 text-gray-400 mr-2" />
                       <span className="text-sm text-gray-900 dark:text-white">
-                        {fare.vehicleType === 'FOUR_SEATER' ? '4-Seater' : '8-Seater'}
+                        {fare.vehicle_type}
                       </span>
                     </div>
                   </td>
@@ -247,11 +244,11 @@ export default function FareManager() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      fare.isActive
+                      fare.is_active
                         ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
                         : 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
                     }`}>
-                      {fare.isActive ? 'Active' : 'Inactive'}
+                      {fare.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -326,12 +323,12 @@ export default function FareManager() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center overflow-y-auto px-4 pb-8 pt-24 sm:pt-28 sm:pb-12">
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
-            className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[calc(100vh-6rem)] overflow-y-auto"
           >
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <div className="flex justify-between items-center">
@@ -352,72 +349,85 @@ export default function FareManager() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      From Location *
+                      Route Name *
                     </label>
                     <input
                       type="text"
-                      value={formData.fromLocation}
-                      onChange={(e) => setFormData({ ...formData, fromLocation: e.target.value })}
+                      value={formData.route_name}
+                      onChange={(e) => setFormData({ ...formData, route_name: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
-                      placeholder="e.g., Ashford"
+                      placeholder="e.g., Ashford → Heathrow"
                       required
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      To Location *
+                      Vehicle Type *
                     </label>
-                    <input
-                      type="text"
-                      value={formData.toLocation}
-                      onChange={(e) => setFormData({ ...formData, toLocation: e.target.value })}
+                    <select
+                      value={formData.vehicle_type}
+                      onChange={(e) => setFormData({ ...formData, vehicle_type: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
-                      placeholder="e.g., Gatwick"
                       required
-                    />
+                    >
+                      <option value="4-Seater Premium Sedan">4-Seater Premium Sedan</option>
+                      <option value="8-Seater Minibus">8-Seater Minibus</option>
+                      <option value="standard">standard</option>
+                    </select>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Vehicle Type *
+                      Pickup Pattern *
                     </label>
-                    <select
-                      value={formData.vehicleType}
-                      onChange={(e) => setFormData({ ...formData, vehicleType: e.target.value as 'FOUR_SEATER' | 'EIGHT_SEATER' })}
+                    <input
+                      type="text"
+                      value={formData.pickup_pattern}
+                      onChange={(e) => setFormData({ ...formData, pickup_pattern: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
                       required
-                    >
-                      <option value="FOUR_SEATER">4-Seater</option>
-                      <option value="EIGHT_SEATER">8-Seater</option>
-                    </select>
+                    />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Price (£) *
+                      Dropoff Pattern *
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      type="text"
+                      value={formData.dropoff_pattern}
+                      onChange={(e) => setFormData({ ...formData, dropoff_pattern: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
-                      placeholder="0.00"
                       required
                     />
                   </div>
                 </div>
 
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Price (£) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="0.00"
+                    required
+                  />
+                </div>
+
+                <div>
                   <label className="flex items-center">
                     <input
                       type="checkbox"
-                      checked={formData.isActive}
-                      onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                      checked={formData.is_active}
+                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                       className="mr-2"
                     />
                     <span className="text-sm text-gray-700 dark:text-gray-300">Active</span>
