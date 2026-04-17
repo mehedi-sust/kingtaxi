@@ -27,8 +27,16 @@ export default function AccountPage() {
   const [form, setForm] = useState<Account>({ full_name: '', email: '', phone: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
   const canEditEmail = Boolean(user?.isAdmin);
 
   useEffect(() => {
@@ -124,6 +132,10 @@ export default function AccountPage() {
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
   };
 
+  const onPasswordChange = (key: keyof typeof passwordForm) => (e: ChangeEvent<HTMLInputElement>) => {
+    setPasswordForm((prev) => ({ ...prev, [key]: e.target.value }));
+  };
+
   const onSave = async () => {
     try {
       setSaving(true);
@@ -149,6 +161,47 @@ export default function AccountPage() {
       setError(e instanceof Error ? e.message : 'Failed to save');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const onUpdatePassword = async () => {
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    const current = passwordForm.currentPassword;
+    const next = passwordForm.newPassword;
+    const confirm = passwordForm.confirmPassword;
+
+    if (!current || !next || !confirm) {
+      setPasswordError('Please fill in all password fields.');
+      return;
+    }
+    if (next.length < 8) {
+      setPasswordError('New password must be at least 8 characters long.');
+      return;
+    }
+    if (next !== confirm) {
+      setPasswordError('New password and confirmation do not match.');
+      return;
+    }
+    if (current === next) {
+      setPasswordError('New password must be different from current password.');
+      return;
+    }
+
+    try {
+      setChangingPassword(true);
+      await apiClient.changePassword(current, next);
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+      setPasswordSuccess('Password updated successfully.');
+    } catch (e) {
+      setPasswordError(e instanceof Error ? e.message : 'Failed to update password.');
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -230,6 +283,73 @@ export default function AccountPage() {
               >
                 <Save className="w-4 h-4 mr-2" />
                 {saving ? 'Saving...' : 'Save changes'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {!loading && (
+          <div className="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Update Password</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+              Use your current password to securely set a new one.
+            </p>
+
+            {passwordError && (
+              <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg">
+                {passwordError}
+              </div>
+            )}
+
+            {passwordSuccess && (
+              <div className="mt-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-200 px-4 py-3 rounded-lg">
+                {passwordSuccess}
+              </div>
+            )}
+
+            <div className="mt-5 grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Current password</label>
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  value={passwordForm.currentPassword}
+                  onChange={onPasswordChange('currentPassword')}
+                  className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  placeholder="Enter current password"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">New password</label>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={passwordForm.newPassword}
+                  onChange={onPasswordChange('newPassword')}
+                  className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  placeholder="At least 8 characters"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm new password</label>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={passwordForm.confirmPassword}
+                  onChange={onPasswordChange('confirmPassword')}
+                  className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                  placeholder="Re-enter new password"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <Button
+                onClick={onUpdatePassword}
+                disabled={changingPassword}
+                className="bg-red-600 hover:bg-red-700 disabled:bg-gray-300"
+              >
+                {changingPassword ? 'Updating...' : 'Update password'}
               </Button>
             </div>
           </div>

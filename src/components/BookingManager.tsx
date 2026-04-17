@@ -48,6 +48,8 @@ export default function BookingManager() {
   const [fareInput, setFareInput] = useState('');
   const [selectedDriverId, setSelectedDriverId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [dateFilter, setDateFilter] = useState('');
 
   const fetchBookings = async () => {
     try {
@@ -70,6 +72,15 @@ export default function BookingManager() {
   useEffect(() => {
     Promise.all([fetchBookings(), fetchDrivers()]);
   }, []);
+
+  useEffect(() => {
+    if (!selectedBooking) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [selectedBooking]);
 
   const openBookingModal = (booking: Booking) => {
     setSelectedBooking(booking);
@@ -126,6 +137,12 @@ export default function BookingManager() {
     return driver.name || driver.phone || driver.vehicle_plate || 'Assigned driver';
   };
 
+  const filteredBookings = bookings.filter((booking) => {
+    const statusMatch = statusFilter === 'ALL' || booking.status === statusFilter;
+    const dateMatch = !dateFilter || booking.pickup_time.slice(0, 10) === dateFilter;
+    return statusMatch && dateMatch;
+  });
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-20">
@@ -140,6 +157,26 @@ export default function BookingManager() {
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Booking Management</h2>
           <p className="text-gray-600 dark:text-gray-300">Review and confirm fares, dispatch rides</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+          >
+            <option value="ALL">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="accepted">Accepted</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+          />
         </div>
       </div>
 
@@ -173,18 +210,15 @@ export default function BookingManager() {
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Customer</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Route</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Pickup</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Vehicle</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fare</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Driver</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Time</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {bookings.map((b) => (
-                <tr key={b.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+              {filteredBookings.map((b) => (
+                <tr key={b.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer" onClick={() => openBookingModal(b)}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <User className="w-4 h-4 text-gray-400 mr-2" />
@@ -192,39 +226,10 @@ export default function BookingManager() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <MapPin className="w-4 h-4 text-gray-400 mr-2" />
-                      <div className="text-sm text-gray-900 dark:text-white">{b.pickup_address} → {b.dropoff_address}</div>
-                    </div>
+                    <span className="text-sm text-gray-900 dark:text-white">{formatDate(b.pickup_time)}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <Calendar className="w-4 h-4 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-900 dark:text-white">
-                        {formatDate(b.pickup_time)}
-                      </span>
-                      <Clock className="w-4 h-4 text-gray-400 ml-3 mr-2" />
-                      <span className="text-sm text-gray-900 dark:text-white">
-                        {formatTime(b.pickup_time)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <Car className="w-4 h-4 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-900 dark:text-white">{b.vehicle_type}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <PoundSterling className="w-4 h-4 text-gray-400 mr-1" />
-                      <span className="text-sm text-gray-900 dark:text-white">
-                        {b.confirmed_fare ?? b.estimated_fare ?? '-'}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {getDriverName(b.driver)}
+                    <span className="text-sm text-gray-900 dark:text-white">{formatTime(b.pickup_time)}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
@@ -234,7 +239,10 @@ export default function BookingManager() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => openBookingModal(b)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openBookingModal(b);
+                        }}
                         className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 flex items-center"
                       >
                         <Eye className="w-4 h-4 mr-1" />

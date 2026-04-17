@@ -15,7 +15,10 @@ import {
   Shield,
   MapPin,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Trash2,
+  Pencil,
+  Save
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import OffersManager from '@/components/OffersManager';
@@ -58,7 +61,20 @@ interface Driver {
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showDriverModal, setShowDriverModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(false);
+  const [userEditForm, setUserEditForm] = useState({
+    full_name: '',
+    email: '',
+    phone: '',
+    account_type: '',
+  });
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [userModalError, setUserModalError] = useState('');
+  const [userModalSuccess, setUserModalSuccess] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [stats, setStats] = useState({
@@ -70,6 +86,7 @@ export default function AdminDashboard() {
   const [usersPage, setUsersPage] = useState(1);
   const [driversPage, setDriversPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [hasFetchedData, setHasFetchedData] = useState(false);
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
@@ -80,14 +97,40 @@ export default function AdminDashboard() {
   }, [isAuthenticated, isLoading, router]);
 
   useEffect(() => {
-    if (isAuthenticated && user?.isAdmin) {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab) setActiveTab(tab);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tab') === activeTab) return;
+    params.set('tab', activeTab);
+    const nextUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState({}, '', nextUrl);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (isAuthenticated && user?.isAdmin && !hasFetchedData) {
       fetchData();
+      setHasFetchedData(true);
       return;
     }
     if (isAuthenticated && !user?.isAdmin) {
       setLoading(false);
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user?.isAdmin, hasFetchedData]);
+
+  useEffect(() => {
+    if (!showUserModal && !showDriverModal) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [showUserModal, showDriverModal]);
 
   const fetchData = async () => {
     try {
@@ -217,14 +260,96 @@ export default function AdminDashboard() {
     }
   };
 
+  const openUserModal = (value: User) => {
+    setSelectedUser(value);
+    setUserEditForm({
+      full_name: value.full_name || `${value.first_name || ''} ${value.last_name || ''}`.trim(),
+      email: value.email || '',
+      phone: value.phone || '',
+      account_type: value.account_type || value.role || 'customer',
+    });
+    setEditingUser(false);
+    setNewPassword('');
+    setConfirmPassword('');
+    setUserModalError('');
+    setUserModalSuccess('');
+    setShowUserModal(true);
+  };
+
+  const saveUserChanges = async () => {
+    if (!selectedUser) return;
+    try {
+      setUserModalError('');
+      setUserModalSuccess('');
+      await apiClient.updateUser(selectedUser.id, {
+        full_name: userEditForm.full_name || undefined,
+        email: userEditForm.email || undefined,
+        phone: userEditForm.phone || undefined,
+        account_type: userEditForm.account_type || undefined,
+      });
+      await fetchData();
+      setUserModalSuccess('User details updated successfully.');
+    } catch (error) {
+      console.error('Error saving user:', error);
+      setUserModalError(error instanceof Error ? error.message : 'Failed to update user details.');
+    }
+  };
+
+  const updateUserPassword = async () => {
+    if (!selectedUser) return;
+    setUserModalError('');
+    setUserModalSuccess('');
+    const password = newPassword.trim();
+    const confirm = confirmPassword.trim();
+    if (!password || !confirm) {
+      setUserModalError('Please enter and confirm the new password.');
+      return;
+    }
+    if (password.length < 8) {
+      setUserModalError('Password must be at least 8 characters long.');
+      return;
+    }
+    if (password !== confirm) {
+      setUserModalError('New password and confirm password do not match.');
+      return;
+    }
+    try {
+      await apiClient.updateUser(selectedUser.id, {
+        password,
+      });
+      setNewPassword('');
+      setConfirmPassword('');
+      setUserModalSuccess('Password updated successfully for this user.');
+    } catch (error) {
+      console.error('Error updating user password:', error);
+      setUserModalError(error instanceof Error ? error.message : 'Failed to update password.');
+    }
+  };
+
+  const deleteUser = async (userId: string) => {
+    try {
+      await apiClient.deleteUser(userId);
+      setUsers((prev) => prev.filter((value) => value.id !== userId));
+      if (selectedUser?.id === userId) {
+        setShowUserModal(false);
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+    }
+  };
+
   const handleDriverAction = async (driverId: string, action: 'approve' | 'reject' | 'review') => {
     try {
+      if (action === 'review') {
+        const value = drivers.find((driver) => driver.id === driverId) || null;
+        setSelectedDriver(value);
+        setShowDriverModal(true);
+        return;
+      }
       if (action === 'approve' || action === 'reject') {
         const is_approved = action === 'approve';
         await apiClient.updateDriver(driverId, { is_approved });
-        
-        // Update local state
-        setDrivers(drivers.map(driver => 
+        setDrivers(drivers.map(driver =>
           driver.id === driverId ? { ...driver, is_approved } : driver
         ));
       }
@@ -485,11 +610,17 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
-                            <button 
-                              onClick={() => {setSelectedUser(user); setShowUserModal(true);}}
+                            <button
+                              onClick={() => openUserModal(user)}
                               className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                             >
                               <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => deleteUser(user.id)}
+                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                            >
+                              <Trash2 className="w-4 h-4" />
                             </button>
                             {!isUserApproved(user) && (
                               <>
@@ -585,7 +716,12 @@ export default function AdminDashboard() {
                       <tr key={driver.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">{getDriverDisplayName(driver)}</div>
+                            <button
+                              onClick={() => handleDriverAction(driver.id, 'review')}
+                              className="text-sm font-medium text-gray-900 dark:text-white hover:text-red-600 dark:hover:text-red-400 text-left"
+                            >
+                              {getDriverDisplayName(driver)}
+                            </button>
                             <div className="text-sm text-gray-500 dark:text-gray-400">{driver.email || driver.phone || '-'}</div>
                           </div>
                         </td>
@@ -742,17 +878,55 @@ export default function AdminDashboard() {
                 </button>
               </div>
               <div className="space-y-4">
+                {userModalError && (
+                  <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {userModalError}
+                  </div>
+                )}
+                {userModalSuccess && (
+                  <div className="rounded-lg border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">
+                    {userModalSuccess}
+                  </div>
+                )}
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</label>
-                  <p className="text-gray-900 dark:text-white">{getUserDisplayName(selectedUser)}</p>
+                  {editingUser ? (
+                    <input
+                      value={userEditForm.full_name}
+                      onChange={(e) => setUserEditForm((prev) => ({ ...prev, full_name: e.target.value }))}
+                      className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white"
+                    />
+                  ) : (
+                    <p className="text-gray-900 dark:text-white">{getUserDisplayName(selectedUser)}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</label>
-                  <p className="text-gray-900 dark:text-white">{selectedUser.email || selectedUser.phone || '-'}</p>
+                  {editingUser ? (
+                    <input
+                      value={userEditForm.email}
+                      onChange={(e) => setUserEditForm((prev) => ({ ...prev, email: e.target.value }))}
+                      className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white"
+                    />
+                  ) : (
+                    <p className="text-gray-900 dark:text-white">{selectedUser.email || selectedUser.phone || '-'}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Account Type</label>
-                  <p className="text-gray-900 dark:text-white">{getUserType(selectedUser)}</p>
+                  {editingUser ? (
+                    <select
+                      value={userEditForm.account_type}
+                      onChange={(e) => setUserEditForm((prev) => ({ ...prev, account_type: e.target.value }))}
+                      className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white"
+                    >
+                      <option value="customer">customer</option>
+                      <option value="business">business</option>
+                      <option value="admin">admin</option>
+                    </select>
+                  ) : (
+                    <p className="text-gray-900 dark:text-white">{getUserType(selectedUser)}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</label>
@@ -765,6 +939,34 @@ export default function AdminDashboard() {
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Registration Date</label>
                   <p className="text-gray-900 dark:text-white">{formatDate(selectedUser.created_at)}</p>
+                </div>
+                <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Admin Password Reset</label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Existing passwords cannot be viewed. Set a new password for this user below.
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="New password (min 8 chars)"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white"
+                    />
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white"
+                    />
+                    <button
+                      onClick={updateUserPassword}
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200"
+                    >
+                      Update Password
+                    </button>
+                  </div>
                 </div>
               </div>
               {!isUserApproved(selectedUser) && (
@@ -782,6 +984,91 @@ export default function AdminDashboard() {
                     onClick={() => {
                       handleUserAction(selectedUser.id, 'reject');
                       setShowUserModal(false);
+                    }}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200"
+                  >
+                    Reject
+                  </button>
+                </div>
+              )}
+              <div className="mt-4 flex gap-3">
+                <button
+                  onClick={() => setEditingUser((prev) => !prev)}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200 inline-flex items-center justify-center"
+                >
+                  <Pencil className="w-4 h-4 mr-2" />
+                  {editingUser ? 'Cancel Edit' : 'Edit User'}
+                </button>
+                {editingUser && (
+                  <button
+                    onClick={saveUserChanges}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200 inline-flex items-center justify-center"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Save
+                  </button>
+                )}
+                <button
+                  onClick={() => deleteUser(selectedUser.id)}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200 inline-flex items-center justify-center"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+        {showDriverModal && selectedDriver && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Driver Application</h3>
+                <button
+                  onClick={() => setShowDriverModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</label>
+                  <p className="text-gray-900 dark:text-white">{getDriverDisplayName(selectedDriver)}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Contact</label>
+                  <p className="text-gray-900 dark:text-white">{selectedDriver.email || selectedDriver.phone || '-'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Experience</label>
+                  <p className="text-gray-900 dark:text-white">{getDriverExperience(selectedDriver)}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Vehicle Plate</label>
+                  <p className="text-gray-900 dark:text-white">{selectedDriver.vehicle_plate || '-'}</p>
+                </div>
+              </div>
+              {!selectedDriver.is_approved && (
+                <div className="flex space-x-3 mt-6">
+                  <button
+                    onClick={() => {
+                      handleDriverAction(selectedDriver.id, 'approve');
+                      setShowDriverModal(false);
+                    }}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleDriverAction(selectedDriver.id, 'reject');
+                      setShowDriverModal(false);
                     }}
                     className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200"
                   >

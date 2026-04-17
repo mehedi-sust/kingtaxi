@@ -58,7 +58,11 @@ export default function SignUp() {
         }, 3000);
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Registration failed. Please try again.';
-        setError(msg);
+        if (/already exists|already registered|duplicate/i.test(msg)) {
+          setError('An account with this email or phone already exists. Please sign in instead.');
+        } else {
+          setError(msg);
+        }
       }
     } catch (error) {
       console.error('Registration error:', error);
@@ -135,24 +139,22 @@ export default function SignUp() {
                   {error}
                 </div>
               )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Full Name *
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      id="fullName"
-                      name="fullName"
-                      value={formData.fullName}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="Enter your full name"
-                    />
-                  </div>
+              <div>
+                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Full Name *
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    id="fullName"
+                    name="fullName"
+                    value={formData.fullName}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    placeholder="Enter your full name"
+                  />
                 </div>
               </div>
 
