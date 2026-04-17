@@ -57,7 +57,18 @@ class ApiClient {
         let errorMessage = `HTTP error! status: ${response.status}`;
         try {
           const errorData = await response.json();
-          errorMessage = errorData.detail || errorData.message || errorMessage;
+          const detail = errorData?.detail;
+          if (Array.isArray(detail)) {
+            errorMessage = detail
+              .map((item: any) => item?.msg || item?.message || JSON.stringify(item))
+              .join(', ');
+          } else if (typeof detail === 'object' && detail !== null) {
+            errorMessage = detail.message || JSON.stringify(detail);
+          } else if (typeof detail === 'string') {
+            errorMessage = detail;
+          } else if (typeof errorData?.message === 'string') {
+            errorMessage = errorData.message;
+          }
         } catch {
           // If we can't parse the error response, use the status text
           errorMessage = response.statusText || errorMessage;
@@ -140,10 +151,12 @@ class ApiClient {
     });
   }
 
-  async requestPasswordReset(emailOrPhone: string) {
+  async requestPasswordReset(emailOrPhone: string, resetUrl?: string) {
+    const payload: Record<string, unknown> = { email_or_phone: emailOrPhone };
+    if (resetUrl) payload.reset_url = resetUrl;
     return this.request('/auth/request-reset', {
       method: 'POST',
-      body: JSON.stringify({ email_or_phone: emailOrPhone }),
+      body: JSON.stringify(payload),
     });
   }
 
@@ -162,6 +175,20 @@ class ApiClient {
         code,
         new_password: newPassword,
       }),
+    });
+  }
+
+  async resetPasswordWithToken(token: string, newPassword: string, emailOrPhone?: string) {
+    const payload: Record<string, unknown> = {
+      token,
+      reset_token: token,
+      new_password: newPassword,
+      password: newPassword,
+    };
+    if (emailOrPhone) payload.email_or_phone = emailOrPhone;
+    return this.request('/auth/reset-password', {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
     });
   }
 
@@ -190,6 +217,16 @@ class ApiClient {
     return this.request('/user', {
       method: 'PATCH',
       body: JSON.stringify(userData),
+    });
+  }
+
+  async changePassword(currentPassword: string, newPassword: string) {
+    return this.request('/user/password', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+      }),
     });
   }
 
@@ -339,11 +376,16 @@ class ApiClient {
   }
 
   async updateUser(userId: string, userData: any) {
-    throw new Error('Not implemented: updateUser requires backend support');
+    return this.request(`/admin/users/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(userData),
+    });
   }
 
   async deleteUser(userId: string) {
-    throw new Error('Not implemented: deleteUser requires backend support');
+    return this.request(`/admin/users/${userId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Drivers endpoints
@@ -359,7 +401,19 @@ class ApiClient {
   }
 
   async updateDriver(driverId: string, driverData: any) {
-    throw new Error('Not implemented: updateDriver requires backend support');
+    if (Object.prototype.hasOwnProperty.call(driverData || {}, 'is_approved')) {
+      const approved = Boolean(driverData.is_approved);
+      const endpoint = approved
+        ? `/drivers/applications/${driverId}/approve`
+        : `/drivers/applications/${driverId}/reject`;
+      return this.request(endpoint, {
+        method: 'POST',
+      });
+    }
+    return this.request(`/admin/drivers/${driverId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(driverData),
+    });
   }
 
   async deleteDriver(driverId: string) {
@@ -559,9 +613,15 @@ class ApiClient {
   }
 
   async deleteOffer(offerId: string) {
-    return this.request(`/offers/${offerId}`, {
-      method: 'DELETE',
-    });
+    try {
+      return await this.request(`/admin/offers/${offerId}`, {
+        method: 'DELETE',
+      });
+    } catch {
+      return this.request(`/offers/${offerId}`, {
+        method: 'DELETE',
+      });
+    }
   }
 
   // Reviews endpoints

@@ -1,11 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Calendar, Clock, Users, Phone, Car, CreditCard, CheckCircle } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+
+type AddressSuggestion = {
+  label: string;
+  lat: number;
+  lon: number;
+};
 
 export default function BookRide() {
+  const { isAuthenticated } = useAuth();
   const [step, setStep] = useState(1);
   const [bookingData, setBookingData] = useState({
     pickup_location: '',
@@ -23,6 +31,13 @@ export default function BookRide() {
   const [estimatedFare, setEstimatedFare] = useState<number | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [pickupSuggestions, setPickupSuggestions] = useState<AddressSuggestion[]>([]);
+  const [dropoffSuggestions, setDropoffSuggestions] = useState<AddressSuggestion[]>([]);
+  const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [dropoffCoords, setDropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [showPickupSuggestions, setShowPickupSuggestions] = useState(false);
+  const [showDropoffSuggestions, setShowDropoffSuggestions] = useState(false);
 
   const vehicleTypes = [
     {
@@ -51,25 +66,116 @@ export default function BookRide() {
     },
   ];
 
+  const normalizePhoneForApi = (value: string) => {
+    const digits = value.replace(/[^\d+]/g, '');
+    if (digits.startsWith('+')) return digits;
+    if (digits.startsWith('0')) return `+44${digits.slice(1)}`;
+    return `+${digits}`;
+  };
+
+  const lookupAddressSuggestions = async (query: string) => {
+    const value = query.trim();
+    if (value.length < 3) return [];
+    const response = await fetch(`/api/geocode?q=${encodeURIComponent(value)}`, { cache: 'no-store' });
+    if (!response.ok) return [];
+    const data = await response.json();
+    if (!Array.isArray(data)) return [];
+    return data
+      .map((item: any) => ({
+        label: String(item?.display_name || ''),
+        lat: Number(item?.lat),
+        lon: Number(item?.lon),
+      }))
+      .filter((item: AddressSuggestion) => item.label && Number.isFinite(item.lat) && Number.isFinite(item.lon))
+      .slice(0, 6);
+  };
+
+  const resolveCoordinates = async (
+    address: string,
+    current: { lat: number; lng: number } | null
+  ): Promise<{ lat: number; lng: number } | null> => {
+    if (current) return current;
+    const candidates = await lookupAddressSuggestions(address);
+    if (!candidates.length) return null;
+    return { lat: candidates[0].lat, lng: candidates[0].lon };
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      const query = bookingData.pickup_location.trim();
+      if (query.length < 3) {
+        setPickupSuggestions([]);
+        setShowPickupSuggestions(false);
+        return;
+      }
+      const items = await lookupAddressSuggestions(query);
+      if (cancelled) return;
+      setPickupSuggestions(items);
+      setShowPickupSuggestions(items.length > 0);
+    }, 300);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [bookingData.pickup_location]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      const query = bookingData.destination.trim();
+      if (query.length < 3) {
+        setDropoffSuggestions([]);
+        setShowDropoffSuggestions(false);
+        return;
+      }
+      const items = await lookupAddressSuggestions(query);
+      if (cancelled) return;
+      setDropoffSuggestions(items);
+      setShowDropoffSuggestions(items.length > 0);
+    }, 300);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [bookingData.destination]);
+
   const calculateFare = async () => {
     if (!bookingData.pickup_location || !bookingData.destination) return;
-    
+
     setIsCalculating(true);
-    // Simulate fare calculation
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const baseFare = bookingData.vehicle_type === 'executive' ? 5.0 : 
-                    bookingData.vehicle_type === 'minibus' ? 8.0 : 3.5;
-    const estimatedDistance = Math.random() * 20 + 5; // Random distance 5-25 miles
-    const fare = baseFare + (estimatedDistance * 2.2);
-    
-    setEstimatedFare(Math.round(fare * 100) / 100);
-    setIsCalculating(false);
+    try {
+      const pickup = await resolveCoordinates(bookingData.pickup_location, pickupCoords);
+      const dropoff = await resolveCoordinates(bookingData.destination, dropoffCoords);
+      if (!pickup || !dropoff) {
+        setEstimatedFare(null);
+        return;
+      }
+      const result: any = await apiClient.estimateFare({
+        pickup_address: bookingData.pickup_location,
+        dropoff_address: bookingData.destination,
+        pickup_lat: pickup.lat,
+        pickup_lng: pickup.lng,
+        dropoff_lat: dropoff.lat,
+        dropoff_lng: dropoff.lng,
+        trip_type: 'standard',
+      });
+      const amount = Number(result?.estimated_fare ?? result?.fare ?? result?.total_fare ?? NaN);
+      if (!Number.isNaN(amount) && amount > 0) {
+        setEstimatedFare(Math.round(amount * 100) / 100);
+      } else {
+        setEstimatedFare(null);
+      }
+    } catch {
+      setEstimatedFare(null);
+    } finally {
+      setIsCalculating(false);
+    }
   };
 
   const nextStep = () => {
     if (step === 1 && bookingData.pickup_location && bookingData.destination && bookingData.vehicle_type) {
-      calculateFare();
+      void calculateFare();
     }
     setStep(prev => Math.min(prev + 1, 3));
   };
@@ -81,7 +187,18 @@ export default function BookRide() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
+    if (!termsAccepted) {
+      setSubmitError('Please accept the terms and conditions before confirming.');
+      return;
+    }
     try {
+      const pickup = await resolveCoordinates(bookingData.pickup_location, pickupCoords);
+      const dropoff = await resolveCoordinates(bookingData.destination, dropoffCoords);
+      if (!pickup || !dropoff) {
+        setSubmitError('Please choose valid pickup and destination addresses from suggestions.');
+        return;
+      }
+
       const dateTimeIso = new Date(
         `${bookingData.pickup_date}T${bookingData.pickup_time}:00`
       ).toISOString();
@@ -92,15 +209,15 @@ export default function BookRide() {
           ? '8-Seater Minibus'
           : '4-Seater Premium Sedan';
       await apiClient.createBooking({
-        customer_phone: bookingData.contact_phone,
+        customer_phone: normalizePhoneForApi(bookingData.contact_phone),
         pickup_address: bookingData.pickup_location,
         dropoff_address: bookingData.destination,
-        pickup_lat: 0,
-        pickup_lng: 0,
-        dropoff_lat: 0,
-        dropoff_lng: 0,
+        pickup_lat: pickup.lat,
+        pickup_lng: pickup.lng,
+        dropoff_lat: dropoff.lat,
+        dropoff_lng: dropoff.lng,
         pickup_time: dateTimeIso,
-        trip_type: 'STANDARD',
+        trip_type: 'standard',
         vehicle_type: vehicleName,
         notes: bookingData.special_requests || undefined,
       });
@@ -110,6 +227,30 @@ export default function BookRide() {
       setSubmitError(error instanceof Error ? error.message : 'Booking failed. Please try again.');
     }
   };
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    const prefill = async () => {
+      try {
+        const user: any = await apiClient.getUser();
+        if (cancelled || !user) return;
+        const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
+        setBookingData((prev) => ({
+          ...prev,
+          contact_name: prev.contact_name || user.full_name || fullName || '',
+          contact_phone: prev.contact_phone || user.phone || '',
+          contact_email: prev.contact_email || user.email || '',
+        }));
+      } catch {
+        // Ignore prefill failure
+      }
+    };
+    void prefill();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   if (step === 4) {
     return (
@@ -123,9 +264,9 @@ export default function BookRide() {
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Booking Confirmed!</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Booking Requested!</h2>
           <p className="text-gray-600 dark:text-gray-300 mb-6">
-            Your taxi has been booked successfully. You will receive a confirmation SMS and email shortly.
+            Booking requested successfully. An agent will confirm your booking with the final fare and assign a driver shortly.
           </p>
           <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6 text-left">
             <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Booking Details:</h3>
@@ -216,11 +357,38 @@ export default function BookRide() {
                         id="pickupLocation"
                         name="pickupLocation"
                         value={bookingData.pickup_location}
-                        onChange={(e) => setBookingData(prev => ({ ...prev, pickup_location: e.target.value }))}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setBookingData(prev => ({ ...prev, pickup_location: value }));
+                          setPickupCoords(null);
+                        }}
+                        onFocus={() => setShowPickupSuggestions(pickupSuggestions.length > 0)}
+                        onBlur={() => {
+                          window.setTimeout(() => setShowPickupSuggestions(false), 120);
+                        }}
                         required
                         className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                         placeholder="Enter pickup address"
                       />
+                      {showPickupSuggestions && pickupSuggestions.length > 0 && (
+                        <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg max-h-56 overflow-y-auto">
+                          {pickupSuggestions.map((item, index) => (
+                            <button
+                              key={`${item.label}-${index}`}
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                setBookingData((prev) => ({ ...prev, pickup_location: item.label }));
+                                setPickupCoords({ lat: item.lat, lng: item.lon });
+                                setShowPickupSuggestions(false);
+                              }}
+                              className="w-full text-left px-3 py-2 text-sm text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600"
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -235,11 +403,38 @@ export default function BookRide() {
                         id="destination"
                         name="destination"
                         value={bookingData.destination}
-                        onChange={(e) => setBookingData(prev => ({ ...prev, destination: e.target.value }))}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setBookingData(prev => ({ ...prev, destination: value }));
+                          setDropoffCoords(null);
+                        }}
+                        onFocus={() => setShowDropoffSuggestions(dropoffSuggestions.length > 0)}
+                        onBlur={() => {
+                          window.setTimeout(() => setShowDropoffSuggestions(false), 120);
+                        }}
                         required
                         className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                         placeholder="Enter destination address"
                       />
+                      {showDropoffSuggestions && dropoffSuggestions.length > 0 && (
+                        <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg max-h-56 overflow-y-auto">
+                          {dropoffSuggestions.map((item, index) => (
+                            <button
+                              key={`${item.label}-${index}`}
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                setBookingData((prev) => ({ ...prev, destination: item.label }));
+                                setDropoffCoords({ lat: item.lat, lng: item.lon });
+                                setShowDropoffSuggestions(false);
+                              }}
+                              className="w-full text-left px-3 py-2 text-sm text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600"
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -502,7 +697,8 @@ export default function BookRide() {
                     <input
                       type="checkbox"
                       id="terms"
-                      required
+                      checked={termsAccepted}
+                      onChange={(e) => setTermsAccepted(e.target.checked)}
                       className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 focus:ring-2"
                     />
                     <label htmlFor="terms" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
