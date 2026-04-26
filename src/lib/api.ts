@@ -4,19 +4,32 @@ function normalizeBaseUrl(value: string | undefined): string {
 }
 
 function resolveApiBaseUrl(): string {
-  const publicUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL);
-  if (publicUrl) return publicUrl;
-  return '/api';
+  // In the browser, always use the Next.js proxy (/api) to avoid CORS issues.
+  // The proxy rewrites /api/* → backend/* via next.config.ts rewrites.
+  if (typeof window !== 'undefined') {
+    return '/api';
+  }
+  // Server-side: use the full backend URL directly.
+  const serverUrl = normalizeBaseUrl(process.env.API_URL || process.env.NEXT_PUBLIC_API_URL);
+  if (serverUrl) return serverUrl;
+  return 'https://kingtaxi-webapp-backend.onrender.com';
 }
 
-const API_BASE_URL = resolveApiBaseUrl();
 const AUTH_EVENT = 'kingtaxi-auth-changed';
 
 class ApiClient {
-  private baseURL: string;
+  private _baseURL: string | null = null;
 
-  constructor(baseURL: string = API_BASE_URL) {
-    this.baseURL = baseURL;
+  private get baseURL(): string {
+    if (this._baseURL !== null) return this._baseURL;
+    // Resolve lazily so typeof window is accurate at call time
+    if (typeof window !== 'undefined') {
+      this._baseURL = '/api';
+    } else {
+      const serverUrl = normalizeBaseUrl(process.env.API_URL || process.env.NEXT_PUBLIC_API_URL);
+      this._baseURL = serverUrl || 'https://kingtaxi-webapp-backend.onrender.com';
+    }
+    return this._baseURL;
   }
 
   private clearAuthState() {
@@ -390,7 +403,27 @@ class ApiClient {
 
   // Drivers endpoints
   async getDrivers() {
-    return this.request('/admin/drivers');
+    const normalizeList = (data: any) => {
+      if (Array.isArray(data)) return data;
+      if (Array.isArray(data?.items)) return data.items;
+      if (Array.isArray(data?.results)) return data.results;
+      return [];
+    };
+
+    // Primary: admin driver applications endpoint
+    try {
+      const data = await this.request('/admin/driver-applications');
+      return normalizeList(data);
+    } catch {}
+
+    // Fallback: legacy paths
+    try {
+      const data = await this.request('/drivers/applications/admin');
+      return normalizeList(data);
+    } catch {}
+
+    const data = await this.request('/admin/drivers');
+    return normalizeList(data);
   }
 
   async createDriver(driverData: any) {
@@ -403,11 +436,10 @@ class ApiClient {
   async updateDriver(driverId: string, driverData: any) {
     if (Object.prototype.hasOwnProperty.call(driverData || {}, 'is_approved')) {
       const approved = Boolean(driverData.is_approved);
-      const endpoint = approved
-        ? `/drivers/applications/${driverId}/approve`
-        : `/drivers/applications/${driverId}/reject`;
-      return this.request(endpoint, {
-        method: 'POST',
+      const action = approved ? 'approve' : 'reject';
+      // Use the correct admin driver-applications endpoint
+      return this.request(`/admin/driver-applications/${driverId}/${action}`, {
+        method: 'PATCH',
       });
     }
     return this.request(`/admin/drivers/${driverId}`, {
@@ -417,7 +449,9 @@ class ApiClient {
   }
 
   async deleteDriver(driverId: string) {
-    throw new Error('Not implemented: deleteDriver requires backend support');
+    return this.request(`/admin/drivers/${driverId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Fares endpoints
@@ -652,6 +686,134 @@ class ApiClient {
   // Stats endpoint
   async getStats() {
     return this.request('/stats/');
+  }
+
+  // Feedback endpoints
+  async createFeedback(payload: {
+    booking_id: string;
+    rating: number;
+    comment?: string;
+  }) {
+    return this.request('/feedback', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getMyFeedback() {
+    return this.request('/feedback/me');
+  }
+
+  async getPublicFeedback() {
+    return this.request('/feedback/public');
+  }
+
+  async getFeedbackManagementAll() {
+    return this.request('/feedback/management/all');
+  }
+
+  async respondToFeedback(feedbackId: string, responseMessage: string) {
+    return this.request(`/feedback/${feedbackId}/respond`, {
+      method: 'PATCH',
+      body: JSON.stringify({ response_message: responseMessage }),
+    });
+  }
+
+  async setFeedbackVisibility(feedbackId: string, isPublic: boolean) {
+    return this.request(`/feedback/${feedbackId}/visibility`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_public: isPublic }),
+    });
+  }
+
+  // Blog endpoints
+  async getBlogWritingGuide() {
+    return this.request('/blogs/writing-guide');
+  }
+
+  async createBlog(payload: {
+    title: string;
+    content: string;
+    image_url?: string;
+    excerpt?: string;
+    tags?: string[];
+  }) {
+    return this.request('/blogs', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getMyBlogs() {
+    return this.request('/blogs/me');
+  }
+
+  async updateBlog(blogId: string, payload: {
+    title?: string;
+    content?: string;
+    image_url?: string;
+    excerpt?: string;
+    tags?: string[];
+  }) {
+    return this.request(`/blogs/${blogId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteBlog(blogId: string) {
+    return this.request(`/blogs/${blogId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getPublicBlogs() {
+    return this.request('/blogs/public');
+  }
+
+  async getPublicBlogBySlug(slug: string) {
+    return this.request(`/blogs/public/${encodeURIComponent(slug)}`);
+  }
+
+  // Admin blog endpoints — routes are under /blogs/admin/... prefix
+  async getAdminBlogs() {
+    return this.request('/blogs/admin/all');
+  }
+
+  async approveBlog(blogId: string) {
+    return this.request(`/blogs/admin/${blogId}/approve`, { method: 'PATCH' });
+  }
+
+  async rejectBlog(blogId: string) {
+    return this.request(`/blogs/admin/${blogId}/reject`, { method: 'PATCH' });
+  }
+
+  async adminDeleteBlog(blogId: string) {
+    return this.request(`/blogs/admin/${blogId}`, { method: 'DELETE' });
+  }
+
+  // Blog likes & comments
+  async likeBlog(blogId: string) {
+    return this.request(`/blogs/${blogId}/likes`, { method: 'POST' });
+  }
+
+  async unlikeBlog(blogId: string) {
+    return this.request(`/blogs/${blogId}/likes`, { method: 'DELETE' });
+  }
+
+  async getBlogComments(blogId: string) {
+    return this.request(`/blogs/${blogId}/comments`);
+  }
+
+  async createBlogComment(blogId: string, comment: string) {
+    return this.request(`/blogs/${blogId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ comment }),
+    });
+  }
+
+  async deleteBlogComment(commentId: string) {
+    return this.request(`/blogs/comments/${commentId}`, { method: 'DELETE' });
   }
 }
 
