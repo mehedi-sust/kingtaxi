@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Clock, MapPin, XCircle } from 'lucide-react';
+import { Calendar, Clock, MapPin, Star, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -19,10 +19,21 @@ type Booking = {
   created_at?: string | null;
 };
 
+type FeedbackEntry = {
+  id: string;
+  booking_id: string;
+  rating: number;
+  comment?: string;
+  is_public?: boolean;
+};
+
 export default function BookingsPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [myFeedback, setMyFeedback] = useState<Record<string, FeedbackEntry>>({});
+  const [feedbackDrafts, setFeedbackDrafts] = useState<Record<string, { rating: number; comment: string }>>({});
+  const [feedbackSubmittingId, setFeedbackSubmittingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,11 +55,29 @@ export default function BookingsPage() {
       try {
         setLoading(true);
         setError(null);
-        const data = await apiClient.getMyBookings();
-        setBookings(Array.isArray(data) ? (data as Booking[]) : []);
+        const [bookingsData, feedbackData] = await Promise.all([
+          apiClient.getMyBookings(),
+          apiClient.getMyFeedback().catch(() => []),
+        ]);
+        setBookings(Array.isArray(bookingsData) ? (bookingsData as Booking[]) : []);
+        const feedbackMap = new Map<string, FeedbackEntry>();
+        const feedbackList = Array.isArray(feedbackData) ? feedbackData : [];
+        feedbackList.forEach((item: any) => {
+          const bookingId = String(item?.booking_id || '');
+          if (!bookingId) return;
+          feedbackMap.set(bookingId, {
+            id: String(item?.id || item?.feedback_id || bookingId),
+            booking_id: bookingId,
+            rating: Number(item?.rating ?? 0),
+            comment: typeof item?.comment === 'string' ? item.comment : '',
+            is_public: Boolean(item?.is_public),
+          });
+        });
+        setMyFeedback(Object.fromEntries(feedbackMap.entries()));
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load bookings');
         setBookings([]);
+        setMyFeedback({});
       } finally {
         setLoading(false);
       }
@@ -64,6 +93,44 @@ export default function BookingsPage() {
       setBookings(Array.isArray(data) ? (data as Booking[]) : []);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to cancel booking');
+    }
+  };
+
+  const submitFeedback = async (bookingId: string | number) => {
+    const key = String(bookingId);
+    const draft = feedbackDrafts[key] || { rating: 0, comment: '' };
+    if (!draft.rating || draft.rating < 1 || draft.rating > 5) {
+      setError('Please select a rating between 1 and 5 stars.');
+      return;
+    }
+
+    try {
+      setError(null);
+      setFeedbackSubmittingId(key);
+      const response: any = await apiClient.createFeedback({
+        booking_id: key,
+        rating: draft.rating,
+        comment: draft.comment.trim() || undefined,
+      });
+      setMyFeedback((prev) => ({
+        ...prev,
+        [key]: {
+          id: String(response?.id || response?.feedback_id || key),
+          booking_id: key,
+          rating: draft.rating,
+          comment: draft.comment.trim(),
+          is_public: Boolean(response?.is_public),
+        },
+      }));
+      setFeedbackDrafts((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to submit feedback.');
+    } finally {
+      setFeedbackSubmittingId(null);
     }
   };
 
@@ -107,7 +174,11 @@ export default function BookingsPage() {
             {sortedBookings.map((b) => {
               const pickupDate = b.pickup_time ? new Date(b.pickup_time) : null;
               const status = (b.status || 'UNKNOWN').toString();
+              const isCompleted = status.toUpperCase() === 'COMPLETED';
               const canCancel = !['CANCELLED', 'COMPLETED'].includes(status.toUpperCase());
+              const bookingKey = String(b.id);
+              const existingFeedback = myFeedback[bookingKey];
+              const draft = feedbackDrafts[bookingKey] || { rating: 0, comment: '' };
               const confirmedFare = typeof b.confirmed_fare === 'number' ? b.confirmed_fare : null;
               const estimatedFare =
                 confirmedFare === null && typeof b.estimated_fare === 'number' ? b.estimated_fare : null;
@@ -171,6 +242,65 @@ export default function BookingsPage() {
                       </Button>
                     </div>
                   </div>
+                  {isCompleted && (
+                    <div className="mt-5 border-t border-gray-200 dark:border-gray-700 pt-4">
+                      {existingFeedback ? (
+                        <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-4 py-3">
+                          <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                            Your feedback: {existingFeedback.rating}/5 {existingFeedback.is_public ? '(Public)' : '(Pending admin approval)'}
+                          </p>
+                          {existingFeedback.comment ? (
+                            <p className="text-sm text-green-700 dark:text-green-300 mt-1">{existingFeedback.comment}</p>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            Rate your completed service
+                          </p>
+                          <div className="flex items-center gap-2">
+                            {Array.from({ length: 5 }, (_, i) => i + 1).map((star) => (
+                              <button
+                                key={star}
+                                type="button"
+                                onClick={() =>
+                                  setFeedbackDrafts((prev) => ({
+                                    ...prev,
+                                    [bookingKey]: { ...draft, rating: star },
+                                  }))
+                                }
+                                className="text-left"
+                                aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                              >
+                                <Star
+                                  className={`w-5 h-5 ${star <= draft.rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300 dark:text-gray-500'}`}
+                                />
+                              </button>
+                            ))}
+                          </div>
+                          <textarea
+                            value={draft.comment}
+                            onChange={(e) =>
+                              setFeedbackDrafts((prev) => ({
+                                ...prev,
+                                [bookingKey]: { ...draft, comment: e.target.value },
+                              }))
+                            }
+                            placeholder="Optional comment"
+                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm bg-white dark:bg-gray-700 dark:text-white"
+                            rows={3}
+                          />
+                          <Button
+                            className="bg-red-600 hover:bg-red-700"
+                            disabled={feedbackSubmittingId === bookingKey}
+                            onClick={() => submitFeedback(bookingKey)}
+                          >
+                            {feedbackSubmittingId === bookingKey ? 'Submitting...' : 'Submit Feedback'}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

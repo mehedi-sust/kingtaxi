@@ -16,10 +16,10 @@ export default function Footer() {
   const quickLinks = [
     { name: 'Home', href: '/' },
     { name: 'About Us', href: '/about' },
-    { name: 'Services', href: '/services' },
     { name: 'Book Now', href: '/book' },
+    { name: 'Blogs', href: '/blogs' },
     { name: 'Gallery', href: '/gallery' },
-    { name: 'Contact', href: '/contact' },
+    { name: 'My Bookings', href: '/bookings' },
   ];
 
   return (
