@@ -20,6 +20,12 @@ import {
 import { apiClient } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 
+type AddressSuggestion = {
+  label: string;
+  lat: number;
+  lon: number;
+};
+
 function profileStorageKey(identifier: string | undefined) {
   const raw = (identifier || '').trim().toLowerCase();
   const safe = raw.replace(/[^a-z0-9_-]/gi, '_');
@@ -53,6 +59,28 @@ export default function DriverApplication() {
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const [dobDay, setDobDay] = useState('');
+  const [dobMonth, setDobMonth] = useState('');
+  const [dobYear, setDobYear] = useState('');
+
+  const lookupAddressSuggestions = async (query: string) => {
+    const value = query.trim();
+    if (value.length < 3) return [];
+    const response = await fetch(`/api/geocode?q=${encodeURIComponent(value)}`, { cache: 'no-store' });
+    if (!response.ok) return [];
+    const data = await response.json();
+    if (!Array.isArray(data)) return [];
+    return data
+      .map((item: any) => ({
+        label: String(item?.display_name || ''),
+        lat: Number(item?.lat),
+        lon: Number(item?.lon),
+      }))
+      .filter((item: AddressSuggestion) => item.label && Number.isFinite(item.lat) && Number.isFinite(item.lon))
+      .slice(0, 6);
+  };
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -147,6 +175,26 @@ export default function DriverApplication() {
     };
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      const query = formData.address.trim();
+      if (query.length < 3) {
+        setAddressSuggestions([]);
+        setShowAddressSuggestions(false);
+        return;
+      }
+      const items = await lookupAddressSuggestions(query);
+      if (cancelled) return;
+      setAddressSuggestions(items);
+      setShowAddressSuggestions(items.length > 0);
+    }, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [formData.address]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -160,7 +208,12 @@ export default function DriverApplication() {
         name: String(formData.name || '').trim(),
         phone: String(formData.phone || '').trim(),
         email: String(formData.email || '').trim(),
+        address: String(formData.address || '').trim(),
+        date_of_birth: String(formData.date_of_birth || '').trim() || undefined,
         license_number: String(formData.license_number || '').trim(),
+        experience: String(formData.experience || '').trim(),
+        availability: String(formData.availability || '').trim(),
+        message: String(formData.message || '').trim() || undefined,
         ...(hasVehicle
           ? {
               vehicle_make: String(formData.vehicle_make || '').trim(),
@@ -547,10 +600,32 @@ export default function DriverApplication() {
                         name="address"
                         value={formData.address}
                         onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                        onFocus={() => setShowAddressSuggestions(addressSuggestions.length > 0)}
+                        onBlur={() => {
+                          window.setTimeout(() => setShowAddressSuggestions(false), 120);
+                        }}
                         required
                         className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
                         placeholder="Enter your full address"
                       />
+                      {showAddressSuggestions && addressSuggestions.length > 0 && (
+                        <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg max-h-56 overflow-y-auto">
+                          {addressSuggestions.map((item, index) => (
+                            <button
+                              key={`${item.label}-${index}`}
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                setFormData((prev) => ({ ...prev, address: item.label }));
+                                setShowAddressSuggestions(false);
+                              }}
+                              className="w-full text-left px-3 py-2 text-sm text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600"
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -559,18 +634,70 @@ export default function DriverApplication() {
                       <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Date of Birth *
                       </label>
-                      <div className="relative">
-                        <Calendar className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                        <input
-                          type="date"
-                          id="dateOfBirth"
-                          name="dateOfBirth"
-                          value={formData.date_of_birth}
-                          onChange={(e) => setFormData(prev => ({ ...prev, date_of_birth: e.target.value }))}
+                      <div className="relative grid grid-cols-3 gap-2">
+                        <Calendar className="absolute left-3 top-3 w-5 h-5 text-gray-400 pointer-events-none" />
+                        <select
+                          value={dobDay}
+                          onChange={(e) => {
+                            const day = e.target.value;
+                            setDobDay(day);
+                            setFormData((prev) => ({
+                              ...prev,
+                              date_of_birth: dobYear && dobMonth && day ? `${dobYear}-${dobMonth}-${day}` : '',
+                            }));
+                          }}
                           required
-                          className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200 dark:bg-gray-700 dark:text-white"
-                        />
+                          className="w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white"
+                        >
+                          <option value="">Day</option>
+                          {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                            <option key={day} value={String(day).padStart(2, '0')}>
+                              {day}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={dobMonth}
+                          onChange={(e) => {
+                            const month = e.target.value;
+                            setDobMonth(month);
+                            setFormData((prev) => ({
+                              ...prev,
+                              date_of_birth: dobYear && month && dobDay ? `${dobYear}-${month}-${dobDay}` : '',
+                            }));
+                          }}
+                          required
+                          className="w-full pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white"
+                        >
+                          <option value="">Month</option>
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                            <option key={month} value={String(month).padStart(2, '0')}>
+                              {new Date(2000, month - 1, 1).toLocaleString('en-GB', { month: 'short' })}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={dobYear}
+                          onChange={(e) => {
+                            const year = e.target.value;
+                            setDobYear(year);
+                            setFormData((prev) => ({
+                              ...prev,
+                              date_of_birth: year && dobMonth && dobDay ? `${year}-${dobMonth}-${dobDay}` : '',
+                            }));
+                          }}
+                          required
+                          className="w-full pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white"
+                        >
+                          <option value="">Year</option>
+                          {Array.from({ length: 80 }, (_, i) => new Date().getFullYear() - 18 - i).map((year) => (
+                            <option key={year} value={String(year)}>
+                              {year}
+                            </option>
+                          ))}
+                        </select>
                       </div>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Use Day / Month / Year selectors for faster year selection.</p>
                     </div>
 
                     <div>

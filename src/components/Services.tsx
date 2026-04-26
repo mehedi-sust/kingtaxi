@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { CheckCircle, Users, Shield, Clock, Star, ArrowRight, Car, MapPin, Calendar, Plane, Camera, ShoppingBag, UserCheck, Globe } from 'lucide-react';
+import { CheckCircle, Users, Shield, Clock, Star, ArrowRight, Car, MapPin, Calendar, Plane, Camera, ShoppingBag, UserCheck, Globe, Phone } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -113,7 +113,7 @@ export default function Services() {
   ];
 
   return (
-    <section className="py-24 bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+    <section className="py-16 bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <motion.div
@@ -121,29 +121,28 @@ export default function Services() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
-          className="text-center mb-20"
+          className="text-center mb-12"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             whileInView={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.2 }}
             viewport={{ once: true }}
-            className="inline-flex items-center space-x-2 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-full px-6 py-3 mb-8"
+            className="inline-flex items-center space-x-2 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-full px-6 py-2 mb-6"
           >
-            <Star className="w-5 h-5" />
-            <span className="font-semibold">Our Core Values</span>
+            <Star className="w-4 h-4" />
+            <span className="font-semibold text-sm">Why Choose King Taxi Ashford</span>
           </motion.div>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-8 bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-            Our Key Services
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+            Our Core Values
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto leading-relaxed">
-            King Taxi's four key service areas are unbeatable. There is no compromise in Quality, 
-            Reliability, Punctuality and Availability. These are our highest priorities.
+          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+            Quality, Reliability, Punctuality and Availability - our highest priorities for taxi service in Ashford.
           </p>
         </motion.div>
 
         {/* Services Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
           {services.map((service, index) => (
             <motion.div
               key={service.title}
@@ -155,27 +154,17 @@ export default function Services() {
               className="group flex"
             >
               <Card className="hover:shadow-xl transition-all duration-300 flex flex-col bg-white dark:bg-gray-800 border-0 shadow-md group-hover:shadow-red-500/10 w-full">
-                <CardHeader className="p-6 flex-shrink-0">
+                <CardHeader className="p-5 flex-shrink-0">
                   <motion.div 
-                    className={`inline-flex items-center justify-center w-16 h-16 ${service.bgColor} rounded-xl mb-4 group-hover:scale-105 transition-transform duration-300`}
+                    className={`inline-flex items-center justify-center w-12 h-12 ${service.bgColor} rounded-xl mb-3 group-hover:scale-105 transition-transform duration-300`}
                     whileHover={{ rotate: 3 }}
                   >
-                    <service.icon className={`w-8 h-8 ${service.color}`} />
+                    <service.icon className={`w-6 h-6 ${service.color}`} />
                   </motion.div>
-                  <CardTitle className="text-xl font-bold text-gray-900 dark:text-white mb-3">{service.title}</CardTitle>
+                  <CardTitle className="text-lg font-bold text-gray-900 dark:text-white mb-2">{service.title}</CardTitle>
                 </CardHeader>
-                <CardContent className="p-6 pt-0 flex flex-col flex-grow">
-                  <p className="text-gray-600 dark:text-gray-300 mb-4 leading-relaxed text-sm flex-grow">{service.description}</p>
-                  <Button 
-                    variant="link" 
-                    asChild 
-                    className="p-0 h-auto text-red-600 dark:text-red-400 font-semibold hover:text-red-700 dark:hover:text-red-300 group-hover:translate-x-1 transition-transform duration-300 text-sm self-start"
-                  >
-                    <Link href="/book" className="flex items-center space-x-1">
-                      <span>Book Now</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </Link>
-                  </Button>
+                <CardContent className="p-5 pt-0 flex flex-col flex-grow">
+                  <p className="text-gray-600 dark:text-gray-300 mb-3 leading-relaxed text-sm flex-grow">{service.description}</p>
                 </CardContent>
               </Card>
             </motion.div>
@@ -188,143 +177,78 @@ export default function Services() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
-          className="mb-20"
+          className="mb-16"
         >
-          <div className="text-center mb-16">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              viewport={{ once: true }}
-              className="inline-flex items-center space-x-2 bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full px-6 py-3 mb-8"
-            >
-              <Car className="w-5 h-5" />
-              <span className="font-semibold">Our Services</span>
-            </motion.div>
-            <h3 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-              Comprehensive Taxi Services
+          <div className="text-center mb-12">
+            <h3 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900 dark:text-white">
+              Taxi Services in Ashford & Kent
             </h3>
-            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
-              From airport transfers to sightseeing tours, we provide a complete range of professional taxi services 
-              to meet all your transportation needs across the UK.
+            <p className="text-base text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+              From airport transfers to local rides, we provide comprehensive taxi services across Ashford and Kent.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {comprehensiveServices.map((service, index) => (
               <motion.div
                 key={service.title}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
+                transition={{ duration: 0.6, delay: index * 0.05 }}
                 viewport={{ once: true }}
-                whileHover={{ y: -5 }}
+                whileHover={{ y: -3 }}
                 className="group flex"
               >
-                <Card className="hover:shadow-xl transition-all duration-300 flex flex-col bg-white dark:bg-gray-800 border-0 shadow-md group-hover:shadow-blue-500/10 w-full">
-                  <CardHeader className="p-6 flex-shrink-0">
+                <Card className="hover:shadow-lg transition-all duration-300 flex flex-col bg-white dark:bg-gray-800 border-0 shadow-sm group-hover:shadow-blue-500/10 w-full">
+                  <CardHeader className="p-4 flex-shrink-0">
                     <motion.div 
-                      className={`inline-flex items-center justify-center w-14 h-14 ${service.bgColor} rounded-xl mb-4 group-hover:scale-105 transition-transform duration-300`}
+                      className={`inline-flex items-center justify-center w-10 h-10 ${service.bgColor} rounded-lg mb-2 group-hover:scale-105 transition-transform duration-300`}
                       whileHover={{ rotate: 3 }}
                     >
-                      <service.icon className={`w-7 h-7 ${service.color}`} />
+                      <service.icon className={`w-5 h-5 ${service.color}`} />
                     </motion.div>
-                    <CardTitle className="text-lg font-bold text-gray-900 dark:text-white mb-3">{service.title}</CardTitle>
+                    <CardTitle className="text-sm font-bold text-gray-900 dark:text-white">{service.title}</CardTitle>
                   </CardHeader>
-                  <CardContent className="p-6 pt-0 flex flex-col flex-grow">
-                    <p className="text-gray-600 dark:text-gray-300 mb-4 leading-relaxed text-sm flex-grow">{service.description}</p>
-                    <Button 
-                      variant="link" 
-                      asChild 
-                      className="p-0 h-auto text-blue-600 dark:text-blue-400 font-semibold hover:text-blue-700 dark:hover:text-blue-300 group-hover:translate-x-1 transition-transform duration-300 text-sm self-start"
-                    >
-                      <Link href="/book" className="flex items-center space-x-1">
-                        <span>Book Now</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </Link>
-                    </Button>
-                  </CardContent>
                 </Card>
               </motion.div>
             ))}
           </div>
         </motion.div>
 
-        {/* Features Section */}
+        {/* CTA Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
         >
-          <Card className="p-8 md:p-16 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border-0 shadow-2xl">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-              <div>
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.6 }}
-                  viewport={{ once: true }}
-                  className="inline-flex items-center space-x-2 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-full px-4 py-2 mb-6"
+          <Card className="p-8 bg-gradient-to-br from-red-600 to-red-700 text-white border-0 shadow-xl">
+            <div className="text-center">
+              <h3 className="text-2xl md:text-3xl font-bold mb-3">Book Your Ashford Taxi Now</h3>
+              <p className="mb-6 opacity-90 text-base max-w-2xl mx-auto">
+                CRB-checked drivers • Competitive fares • 24/7 availability • Instant confirmation
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button 
+                  variant="secondary" 
+                  asChild 
+                  className="bg-white text-red-600 hover:bg-gray-100 font-semibold px-8 py-3 text-base rounded-full shadow-lg hover:scale-105 transition-all"
                 >
-                  <Star className="w-4 h-4" />
-                  <span className="font-semibold text-sm">Why Choose Us</span>
-                </motion.div>
-                <h3 className="text-3xl md:text-4xl font-bold mb-8 text-gray-900 dark:text-white">
-                  Why Choose King Taxi?
-                </h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-10 leading-relaxed text-lg">
-                  We are committed to deliver the highest standard in our services ensuring you are 
-                  safe and comfortable while onboard, offering unbeatable prices and excellent customer services.
-                </p>
-                <div className="space-y-6">
-                  {features.map((feature, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, x: -20 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.5, delay: index * 0.1 }}
-                      viewport={{ once: true }}
-                      className="flex items-start space-x-4 group"
-                    >
-                      <div className="w-8 h-8 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
-                        <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-                      </div>
-                      <span className="text-gray-700 dark:text-gray-300 text-base leading-relaxed">{feature}</span>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-              <div className="relative">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.6 }}
-                  viewport={{ once: true }}
-                  whileHover={{ scale: 1.02 }}
-                  className="relative"
+                  <Link href="/book" className="flex items-center space-x-2">
+                    <span>Book Online</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  asChild 
+                  className="border-2 border-white text-white hover:bg-white hover:text-red-600 font-semibold px-8 py-3 text-base rounded-full transition-all"
                 >
-                  <Card className="relative overflow-hidden bg-gradient-to-br from-red-600 to-red-700 text-white p-10 shadow-2xl border-0">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
-                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-12 -translate-x-12"></div>
-                    <div className="relative z-10">
-                      <h4 className="text-3xl font-bold mb-6">Ready to Book?</h4>
-                      <p className="mb-8 opacity-90 text-lg leading-relaxed">
-                        Experience our premium taxi service today. Book now for a comfortable and reliable journey.
-                      </p>
-                      <Button 
-                        variant="secondary" 
-                        asChild 
-                        className="bg-white text-red-600 hover:bg-gray-100 font-semibold px-8 py-4 text-lg rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                      >
-                        <Link href="/book" className="flex items-center space-x-2">
-                          <span>Book Your Taxi Now</span>
-                          <ArrowRight className="w-5 h-5" />
-                        </Link>
-                      </Button>
-                    </div>
-                  </Card>
-                </motion.div>
+                  <Link href="tel:+4401233367357" className="flex items-center space-x-2">
+                    <Phone className="w-4 h-4" />
+                    <span>01233 367 357</span>
+                  </Link>
+                </Button>
               </div>
             </div>
           </Card>

@@ -34,7 +34,6 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
-.env
 
 # Keep .env.example for reference
 !.env.example
@@ -47,7 +46,6 @@ yarn-error.log*
 next-env.d.ts
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *.swo

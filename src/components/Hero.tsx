@@ -45,12 +45,12 @@ export default function Hero() {
           <div className="space-y-4">
             {/* Premium Taxi Service - smaller text above */}
             <motion.p
-              className="text-xl md:text-2xl lg:text-3xl font-medium text-white/90"
+              className="text-xl md:text-2xl font-medium text-white/90"
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
             >
-              Premium Taxi Service
+              Premium Taxi Service in Ashford, Kent
             </motion.p>
             
             {/* KING TAXI Logo */}
@@ -62,21 +62,21 @@ export default function Hero() {
             >
               <Image
                 src="/logo.jpeg"
-                alt="King Taxi Logo"
-                width={400}
-                height={200}
+                alt="King Taxi Ashford Logo"
+                width={350}
+                height={175}
                 className="object-contain max-w-full h-auto"
                 priority
               />
             </motion.div>
             
             <motion.p 
-              className="text-2xl md:text-3xl font-medium text-white/80"
+              className="text-xl md:text-2xl font-medium text-white/80"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.8 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
             >
-              in the UK
+              Your Trusted Local Taxi Company
             </motion.p>
           </div>
           
@@ -84,10 +84,9 @@ export default function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.8 }}
-            className="text-xl md:text-2xl text-gray-100 max-w-4xl mx-auto leading-relaxed font-light"
+            className="text-lg md:text-xl text-gray-100 max-w-3xl mx-auto leading-relaxed"
           >
-            Experience reliable, punctual, and quality transportation with our trusted drivers 
-            and modern fleet of vehicles. Your journey, our commitment.
+            24/7 taxi service in Ashford & Kent • Airport transfers • CRB-checked drivers • Competitive fares
           </motion.p>
 
           <motion.div
@@ -124,42 +123,42 @@ export default function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 1.2 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20 max-w-5xl mx-auto"
+            className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 max-w-4xl mx-auto"
           >
             <motion.div
               whileHover={{ scale: 1.05, y: -5 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
             >
-              <Card className="bg-white/15 backdrop-blur-lg border-white/30 p-8 text-center hover:bg-white/20 transition-all duration-300 group">
-                <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                  <Clock className="w-8 h-8 text-white" />
+              <Card className="bg-white/15 backdrop-blur-lg border-white/30 p-6 text-center hover:bg-white/20 transition-all duration-300 group">
+                <div className="w-14 h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <Clock className="w-7 h-7 text-white" />
                 </div>
-                <h3 className="text-white font-bold text-xl mb-3">24/7 Service</h3>
-                <p className="text-gray-100 text-base leading-relaxed">Available round the clock for your convenience</p>
+                <h3 className="text-white font-bold text-lg mb-2">24/7 Available</h3>
+                <p className="text-gray-100 text-sm leading-relaxed">Round the clock service</p>
               </Card>
             </motion.div>
             <motion.div
               whileHover={{ scale: 1.05, y: -5 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
             >
-              <Card className="bg-white/15 backdrop-blur-lg border-white/30 p-8 text-center hover:bg-white/20 transition-all duration-300 group">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                  <MapPin className="w-8 h-8 text-white" />
+              <Card className="bg-white/15 backdrop-blur-lg border-white/30 p-6 text-center hover:bg-white/20 transition-all duration-300 group">
+                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <MapPin className="w-7 h-7 text-white" />
                 </div>
-                <h3 className="text-white font-bold text-xl mb-3">UK Wide Coverage</h3>
-                <p className="text-gray-100 text-base leading-relaxed">Serving all major cities and airports</p>
+                <h3 className="text-white font-bold text-lg mb-2">Ashford & Kent</h3>
+                <p className="text-gray-100 text-sm leading-relaxed">Local & airport transfers</p>
               </Card>
             </motion.div>
             <motion.div
               whileHover={{ scale: 1.05, y: -5 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
             >
-              <Card className="bg-white/15 backdrop-blur-lg border-white/30 p-8 text-center hover:bg-white/20 transition-all duration-300 group">
-                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                  <Phone className="w-8 h-8 text-white" />
+              <Card className="bg-white/15 backdrop-blur-lg border-white/30 p-6 text-center hover:bg-white/20 transition-all duration-300 group">
+                <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <Phone className="w-7 h-7 text-white" />
                 </div>
-                <h3 className="text-white font-bold text-xl mb-3">Easy Booking</h3>
-                <p className="text-gray-100 text-base leading-relaxed">Quick online booking or call us directly</p>
+                <h3 className="text-white font-bold text-lg mb-2">Instant Booking</h3>
+                <p className="text-gray-100 text-sm leading-relaxed">Online or by phone</p>
               </Card>
             </motion.div>
           </motion.div>
