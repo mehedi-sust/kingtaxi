@@ -3,12 +3,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { 
-  Users, 
-  Car, 
-  FileText, 
-  TrendingUp, 
-  Calendar,
+import {
+  Users,
+  Car,
   Eye,
   CheckCircle,
   XCircle,
@@ -18,13 +15,20 @@ import {
   ChevronRight,
   Trash2,
   Pencil,
-  Save
+  Save,
+  BookOpen,
+  MessageSquare,
+  Tag,
+  ArrowLeft,
+  LayoutDashboard,
+  Calendar,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import OffersManager from '@/components/OffersManager';
 import FareManager from '@/components/FareManager';
 import VehicleManager from '@/components/VehicleManager';
 import BookingManager from '@/components/BookingManager';
+import BlogManager from '@/components/BlogManager';
 import { apiClient } from '@/lib/api';
 
 interface User {
@@ -44,6 +48,7 @@ interface User {
 
 interface Driver {
   id: string;
+  booking_id?: string;
   first_name?: string;
   last_name?: string;
   name?: string;
@@ -58,8 +63,26 @@ interface Driver {
   message?: string;
 }
 
+interface FeedbackItem {
+  id: string;
+  booking_id?: string;
+  customer_name?: string;
+  customer_identifier?: string;
+  rating?: number;
+  comment?: string;
+  is_public?: boolean;
+  created_at?: string;
+}
+
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState('overview');
+  // Initialize activeTab from URL if available, otherwise default to 'overview'
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('tab') || 'overview';
+    }
+    return 'overview';
+  });
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -77,6 +100,11 @@ export default function AdminDashboard() {
   const [userModalSuccess, setUserModalSuccess] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackError, setFeedbackError] = useState('');
+  const [togglingFeedbackId, setTogglingFeedbackId] = useState<string | null>(null);
+  const [driversError, setDriversError] = useState('');
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalDrivers: 0,
@@ -96,20 +124,34 @@ export default function AdminDashboard() {
     }
   }, [isAuthenticated, isLoading, router]);
 
+  // Sync activeTab with URL on mount and handle browser back/forward
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const tab = params.get('tab');
-    if (tab) setActiveTab(tab);
+    
+    // Handle popstate (browser back/forward)
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab') || 'overview';
+      setActiveTab(tab);
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // Update URL when activeTab changes
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('tab') === activeTab) return;
-    params.set('tab', activeTab);
-    const nextUrl = `${window.location.pathname}?${params.toString()}`;
-    window.history.replaceState({}, '', nextUrl);
+    const currentParams = new URLSearchParams(window.location.search);
+    const currentTab = currentParams.get('tab');
+    
+    // Only update URL if tab has changed
+    if (currentTab !== activeTab) {
+      const params = new URLSearchParams(window.location.search);
+      params.set('tab', activeTab);
+      const nextUrl = `${window.location.pathname}?${params.toString()}`;
+      window.history.pushState({ tab: activeTab }, '', nextUrl);
+    }
   }, [activeTab]);
 
   useEffect(() => {
@@ -121,9 +163,7 @@ export default function AdminDashboard() {
     if (isAuthenticated && !user?.isAdmin) {
       setLoading(false);
     }
-  }, [isAuthenticated, user?.isAdmin, hasFetchedData]);
-
-  useEffect(() => {
+  }, [isAuthenticated, user?.isAdmin, hasFetchedData]);  useEffect(() => {
     if (!showUserModal && !showDriverModal) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -135,11 +175,14 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [usersData, driversData, offersData] = await Promise.all([
+      const [usersData, driversRaw, offersData] = await Promise.all([
         apiClient.getUsers().catch(() => []),
         apiClient.getDrivers().catch(() => []),
         apiClient.getAdminOffersAll().catch(() => apiClient.getOffers()).catch(() => []),
       ]);
+      setFeedbackLoading(true);
+      const feedbackRaw = await apiClient.getFeedbackManagementAll().catch(() => []);
+      setFeedbackLoading(false);
 
       const toTimestamp = (value?: string | null) => {
         if (!value) return null;
@@ -159,11 +202,55 @@ export default function AdminDashboard() {
           }).length
         : 0;
 
+      const normalizeDrivers = (items: any[]): Driver[] => {
+        return items
+          .map((item: any) => ({
+            id: String(item?.id || item?.application_id || item?.driver_application_id || item?.driver_id || ''),
+            booking_id: item?.booking_id ? String(item.booking_id) : undefined,
+            // DriverApplication uses `name` as a single field
+            first_name: item?.first_name || item?.firstName || '',
+            last_name: item?.last_name || item?.lastName || '',
+            name: item?.name || item?.full_name || `${item?.first_name || ''} ${item?.last_name || ''}`.trim(),
+            email: item?.email || '',
+            phone: item?.phone || item?.phone_number || '',
+            experience: item?.experience || item?.license_number || '',
+            vehicle_model: item?.vehicle_model
+              ? (item?.vehicle_make ? `${item.vehicle_make} ${item.vehicle_model}` : item.vehicle_model)
+              : item?.vehicle_make || '',
+            vehicle_plate: item?.vehicle_plate || '',
+            // Normalize status: backend uses PENDING/APPROVED/REJECTED (uppercase)
+            status: String(item?.status || 'PENDING').toLowerCase(),
+            is_approved: typeof item?.is_approved === 'boolean'
+              ? item.is_approved
+              : String(item?.status || '').toUpperCase() === 'APPROVED',
+            created_at: item?.created_at || item?.submitted_at || '',
+            message: item?.message || item?.notes || '',
+          }))
+          .filter((item) => Boolean(item.id));
+      };
+
+      const normalizeFeedback = (items: any[]): FeedbackItem[] => {
+        return items
+          .map((item: any) => ({
+            id: String(item?.id || item?.feedback_id || ''),
+            booking_id: item?.booking_id ? String(item.booking_id) : undefined,
+            customer_name: item?.customer_name || item?.name || '',
+            customer_identifier: item?.customer_identifier || item?.customer_email || item?.customer_phone || '',
+            rating: Number(item?.rating ?? NaN),
+            comment: item?.comment || '',
+            is_public: Boolean(item?.is_public),
+            created_at: item?.created_at || '',
+          }))
+          .filter((item) => Boolean(item.id));
+      };
+
       setUsers(usersData as User[]);
-      setDrivers(driversData as Driver[]);
+      setDrivers(normalizeDrivers(Array.isArray(driversRaw) ? driversRaw : []));
+      setFeedbackItems(normalizeFeedback(Array.isArray(feedbackRaw) ? feedbackRaw : []));
+      setFeedbackError('');
       setStats({
         totalUsers: (usersData as User[]).length,
-        totalDrivers: (driversData as Driver[]).length,
+        totalDrivers: Array.isArray(driversRaw) ? driversRaw.length : 0,
         activeOffers,
       });
     } catch (error) {
@@ -171,6 +258,8 @@ export default function AdminDashboard() {
       // Set fallback data on error
       setUsers([]);
       setDrivers([]);
+      setFeedbackItems([]);
+      setFeedbackError('Unable to load dashboard data.');
       setStats({
         totalUsers: 0,
         totalDrivers: 0,
@@ -178,6 +267,7 @@ export default function AdminDashboard() {
       });
     } finally {
       setLoading(false);
+      setFeedbackLoading(false);
     }
   };
 
@@ -230,20 +320,26 @@ export default function AdminDashboard() {
   }
 
   const statsCards = [
-    { title: 'Total Users', value: (stats?.totalUsers || 0).toString(), change: '+12%', icon: Users, color: 'text-blue-600', bgColor: 'bg-blue-100' },
-    { title: 'Driver Applications', value: (stats?.totalDrivers || 0).toString(), change: '+8%', icon: Car, color: 'text-green-600', bgColor: 'bg-green-100' },
-    { title: 'Active Offers', value: (stats?.activeOffers || 0).toString(), change: '+5%', icon: FileText, color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
-    { title: 'Revenue (Month)', value: '£12,450', change: '+15%', icon: TrendingUp, color: 'text-purple-600', bgColor: 'bg-purple-100' },
+    { title: 'Total Users', value: (stats?.totalUsers || 0).toString(), icon: Users, color: 'text-blue-600', bgColor: 'bg-blue-100 dark:bg-blue-900/30', section: 'users', description: 'Manage registered users' },
+    { title: 'Driver Applications', value: (stats?.totalDrivers || 0).toString(), icon: Car, color: 'text-green-600', bgColor: 'bg-green-100 dark:bg-green-900/30', section: 'drivers', description: 'Review driver applications' },
+    { title: 'Active Offers', value: (stats?.activeOffers || 0).toString(), icon: Tag, color: 'text-yellow-600', bgColor: 'bg-yellow-100 dark:bg-yellow-900/30', section: 'offers', description: 'Manage promotions' },
+    { title: 'Bookings', value: '—', icon: Calendar, color: 'text-purple-600', bgColor: 'bg-purple-100 dark:bg-purple-900/30', section: 'bookings', description: 'View & manage bookings' },
+    { title: 'Fares', value: '—', icon: MapPin, color: 'text-red-600', bgColor: 'bg-red-100 dark:bg-red-900/30', section: 'fares', description: 'Set route pricing' },
+    { title: 'Vehicles', value: '—', icon: Car, color: 'text-indigo-600', bgColor: 'bg-indigo-100 dark:bg-indigo-900/30', section: 'vehicles', description: 'Fleet management' },
+    { title: 'Blogs', value: '—', icon: BookOpen, color: 'text-pink-600', bgColor: 'bg-pink-100 dark:bg-pink-900/30', section: 'blogs', description: 'Approve blog posts' },
+    { title: 'Feedback', value: '—', icon: MessageSquare, color: 'text-teal-600', bgColor: 'bg-teal-100 dark:bg-teal-900/30', section: 'feedback', description: 'Customer feedback' },
   ];
 
   const tabs = [
-    { id: 'overview', name: 'Overview', icon: TrendingUp },
+    { id: 'overview', name: 'Overview', icon: LayoutDashboard },
     { id: 'users', name: 'Users', icon: Users },
-    { id: 'drivers', name: 'Driver Applications', icon: Car },
-    { id: 'vehicles', name: 'Vehicle Management', icon: Car },
-    { id: 'fares', name: 'Fare Management', icon: MapPin },
-    { id: 'bookings', name: 'Booking Management', icon: Calendar },
-    { id: 'offers', name: 'Offers & Promotions', icon: Calendar },
+    { id: 'drivers', name: 'Drivers', icon: Car },
+    { id: 'feedback', name: 'Feedback', icon: MessageSquare },
+    { id: 'vehicles', name: 'Vehicles', icon: Car },
+    { id: 'fares', name: 'Fares', icon: MapPin },
+    { id: 'bookings', name: 'Bookings', icon: Calendar },
+    { id: 'offers', name: 'Offers', icon: Tag },
+    { id: 'blogs', name: 'Blogs', icon: BookOpen },
   ];
 
   const handleUserAction = async (userId: string, action: 'approve' | 'reject') => {
@@ -340,6 +436,7 @@ export default function AdminDashboard() {
 
   const handleDriverAction = async (driverId: string, action: 'approve' | 'reject' | 'review') => {
     try {
+      setDriversError('');
       if (action === 'review') {
         const value = drivers.find((driver) => driver.id === driverId) || null;
         setSelectedDriver(value);
@@ -349,12 +446,58 @@ export default function AdminDashboard() {
       if (action === 'approve' || action === 'reject') {
         const is_approved = action === 'approve';
         await apiClient.updateDriver(driverId, { is_approved });
-        setDrivers(drivers.map(driver =>
-          driver.id === driverId ? { ...driver, is_approved } : driver
-        ));
+        // Refresh the full list so the new status is accurate
+        const driversRaw = await apiClient.getDrivers().catch(() => []);
+        const normalizeDrivers = (items: any[]): Driver[] =>
+          items
+            .map((item: any) => ({
+              id: String(item?.id || ''),
+              booking_id: item?.booking_id ? String(item.booking_id) : undefined,
+              first_name: item?.first_name || '',
+              last_name: item?.last_name || '',
+              name: item?.name || item?.full_name || `${item?.first_name || ''} ${item?.last_name || ''}`.trim(),
+              email: item?.email || '',
+              phone: item?.phone || '',
+              experience: item?.experience || item?.license_number || '',
+              vehicle_model: item?.vehicle_model
+                ? (item?.vehicle_make ? `${item.vehicle_make} ${item.vehicle_model}` : item.vehicle_model)
+                : item?.vehicle_make || '',
+              vehicle_plate: item?.vehicle_plate || '',
+              status: String(item?.status || 'PENDING').toLowerCase(),
+              is_approved: typeof item?.is_approved === 'boolean'
+                ? item.is_approved
+                : String(item?.status || '').toUpperCase() === 'APPROVED',
+              created_at: item?.created_at || '',
+              message: item?.message || '',
+            }))
+            .filter((item) => Boolean(item.id));
+        setDrivers(normalizeDrivers(Array.isArray(driversRaw) ? driversRaw : []));
       }
     } catch (error) {
       console.error('Error updating driver:', error);
+      setDriversError(error instanceof Error ? error.message : 'Failed to update driver application.');
+    }
+  };
+
+  const isDriverApproved = (driver: Driver) => {
+    const status = String(driver.status || '').toLowerCase();
+    if (typeof driver.is_approved === 'boolean') return driver.is_approved;
+    return status === 'approved' || status === 'accepted' || status === 'active';
+  };
+
+  const handleFeedbackVisibilityToggle = async (feedbackId: string, current: boolean) => {
+    try {
+      setTogglingFeedbackId(feedbackId);
+      setFeedbackError('');
+      await apiClient.setFeedbackVisibility(feedbackId, !current);
+      setFeedbackItems((prev) =>
+        prev.map((item) => (item.id === feedbackId ? { ...item, is_public: !current } : item))
+      );
+    } catch (error) {
+      console.error('Error updating feedback visibility:', error);
+      setFeedbackError(error instanceof Error ? error.message : 'Failed to update feedback visibility.');
+    } finally {
+      setTogglingFeedbackId(null);
     }
   };
 
@@ -433,122 +576,108 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="mb-8"
+          transition={{ duration: 0.4 }}
+          className="mb-6"
         >
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Admin Dashboard</h1>
-          <p className="text-gray-600 dark:text-gray-300">Manage users, applications, and system settings</p>
+          <div className="flex items-center gap-3">
+            {activeTab !== 'overview' && (
+              <button
+                onClick={() => setActiveTab('overview')}
+                className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+                {activeTab === 'overview' ? 'Admin Dashboard' : tabs.find(t => t.id === activeTab)?.name}
+              </h1>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">
+                {activeTab === 'overview' ? 'Click any section to manage it' : 'Admin Dashboard › ' + tabs.find(t => t.id === activeTab)?.name}
+              </p>
+            </div>
+          </div>
         </motion.div>
 
-
-        {/* Navigation Tabs */}
-        <div className="border-b border-gray-200 dark:border-gray-700 mb-8">
-          <nav className="flex space-x-8">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-red-500 text-red-600 dark:text-red-400'
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-              >
-                <tab.icon className="w-5 h-5 mr-2" />
-                {tab.name}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        {/* Overview Tab */}
+        {/* Overview: Card Grid */}
         {activeTab === 'overview' && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.4 }}
             className="space-y-8"
           >
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {statsCards.map((stat, index) => (
-                <motion.div
-                  key={stat.title}
+            {/* Quick Stats + Navigation Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {statsCards.map((card, index) => (
+                <motion.button
+                  key={card.section}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700"
+                  transition={{ duration: 0.4, delay: index * 0.05 }}
+                  onClick={() => setActiveTab(card.section)}
+                  className="group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 text-left hover:border-red-300 dark:hover:border-red-700 hover:shadow-md transition-all duration-200 cursor-pointer"
                 >
-                  <div className="flex items-center">
-                    <div className={`p-3 rounded-lg ${stat.bgColor} mr-4`}>
-                      <stat.icon className={`w-6 h-6 ${stat.color}`} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{stat.title}</p>
-                      <div className="flex items-center">
-                        <p className="text-2xl font-semibold text-gray-900 dark:text-white">{stat.value}</p>
-                        <span className="ml-2 text-sm font-medium text-green-600">{stat.change}</span>
-                      </div>
-                    </div>
+                  <div className={`inline-flex p-2.5 rounded-lg ${card.bgColor} mb-3`}>
+                    <card.icon className={`w-5 h-5 ${card.color}`} />
                   </div>
-                </motion.div>
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white mb-0.5">{card.value}</div>
+                  <div className="text-sm font-semibold text-gray-700 dark:text-gray-200">{card.title}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
+                    {card.description} →
+                  </div>
+                </motion.button>
               ))}
             </div>
 
             {/* Recent Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Recent User Registrations</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Recent Users</h3>
+                  <button onClick={() => setActiveTab('users')} className="text-xs text-red-600 dark:text-red-400 hover:underline">View all</button>
                 </div>
-                <div className="p-6">
-                  <div className="space-y-4">
-                    {users.slice(0, 3).map((user) => (
-                      <div key={user.id} className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{getUserDisplayName(user)}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{user.email || user.phone || '-'}</p>
-                        </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          isUserApproved(user)
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                        }`}>
-                          {getUserStatusLabel(user)}
-                        </span>
+                <div className="p-5 space-y-3">
+                  {users.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">No users yet.</p>
+                  ) : users.slice(0, 4).map((u) => (
+                    <div key={u.id} className="flex items-center justify-between">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{getUserDisplayName(u)}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{u.email || u.phone || '-'}</p>
                       </div>
-                    ))}
-                  </div>
+                      <span className={`ml-2 flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${isUserApproved(u) ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'}`}>
+                        {getUserStatusLabel(u)}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Driver Applications</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Driver Applications</h3>
+                  <button onClick={() => setActiveTab('drivers')} className="text-xs text-red-600 dark:text-red-400 hover:underline">View all</button>
                 </div>
-                <div className="p-6">
-                  <div className="space-y-4">
-                    {drivers.slice(0, 3).map((driver) => (
-                      <div key={driver.id} className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{getDriverDisplayName(driver)}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{getDriverExperience(driver)}</p>
-                        </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          driver.is_approved 
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                        }`}>
-                          {driver.is_approved ? 'Approved' : 'Pending'}
-                        </span>
+                <div className="p-5 space-y-3">
+                  {drivers.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">No applications yet.</p>
+                  ) : drivers.slice(0, 4).map((d) => (
+                    <div key={d.id} className="flex items-center justify-between">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{getDriverDisplayName(d)}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{getDriverExperience(d)}</p>
                       </div>
-                    ))}
-                  </div>
+                      <span className={`ml-2 flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${isDriverApproved(d) ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'}`}>
+                        {isDriverApproved(d) ? 'Approved' : 'Pending'}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -697,77 +826,116 @@ export default function AdminDashboard() {
             transition={{ duration: 0.5 }}
           >
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-              <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Driver Applications</h3>
+              <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Driver Applications</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{drivers.length} total applications</p>
+                </div>
+                <button
+                  onClick={() => { setHasFetchedData(false); }}
+                  className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-300 dark:border-gray-600 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  Refresh
+                </button>
               </div>
+              {driversError && (
+                <div className="mx-6 mt-4 rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-300 flex items-center justify-between">
+                  <span>{driversError}</span>
+                  <button onClick={() => setDriversError('')} className="ml-2 text-red-500 hover:text-red-700">×</button>
+                </div>
+              )}
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Driver</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Experience</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Availability</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Applicant</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">Licence / Experience</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden md:table-cell">Vehicle</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {currentDrivers.map((driver) => (
-                      <tr key={driver.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
+                    {currentDrivers.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                          No driver applications found.
+                        </td>
+                      </tr>
+                    ) : currentDrivers.map((driver) => {
+                      const approved = isDriverApproved(driver);
+                      const statusStr = String(driver.status || '').toLowerCase();
+                      const rejected = statusStr === 'rejected';
+                      const pending = !approved && !rejected;
+                      return (
+                        <tr key={driver.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <td className="px-6 py-4">
                             <button
                               onClick={() => handleDriverAction(driver.id, 'review')}
-                              className="text-sm font-medium text-gray-900 dark:text-white hover:text-red-600 dark:hover:text-red-400 text-left"
+                              className="text-sm font-medium text-gray-900 dark:text-white hover:text-red-600 dark:hover:text-red-400 text-left block"
                             >
                               {getDriverDisplayName(driver)}
                             </button>
                             <div className="text-sm text-gray-500 dark:text-gray-400">{driver.email || driver.phone || '-'}</div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {getDriverExperience(driver)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          Full-time
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            driver.is_approved 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                          }`}>
-                            {driver.is_approved ? 'Approved' : 'Pending'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
-                            {!driver.is_approved && (
-                              <>
-                                <button 
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900 dark:text-white hidden sm:table-cell">
+                            {getDriverExperience(driver)}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900 dark:text-white hidden md:table-cell">
+                            {driver.vehicle_model || '-'}{driver.vehicle_plate ? ` · ${driver.vehicle_plate}` : ''}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              approved
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                : rejected
+                                ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                            }`}>
+                              {approved ? 'Approved' : rejected ? 'Rejected' : 'Pending'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => handleDriverAction(driver.id, 'review')}
+                                title="View details"
+                                className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              {pending && (
+                                <>
+                                  <button
+                                    onClick={() => handleDriverAction(driver.id, 'approve')}
+                                    title="Approve"
+                                    className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                                  >
+                                    <CheckCircle className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDriverAction(driver.id, 'reject')}
+                                    title="Reject"
+                                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
+                              {rejected && (
+                                <button
                                   onClick={() => handleDriverAction(driver.id, 'approve')}
+                                  title="Re-approve"
                                   className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
                                 >
                                   <CheckCircle className="w-4 h-4" />
                                 </button>
-                                <button 
-                                  onClick={() => handleDriverAction(driver.id, 'review')}
-                                  className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </button>
-                                <button 
-                                  onClick={() => handleDriverAction(driver.id, 'reject')}
-                                  className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                                >
-                                  <XCircle className="w-4 h-4" />
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -776,7 +944,7 @@ export default function AdminDashboard() {
               {drivers.length > itemsPerPage && (
                 <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 dark:border-gray-700">
                   <div className="flex items-center text-sm text-gray-700 dark:text-gray-300">
-                    Showing {driversStartIndex + 1} to {Math.min(driversEndIndex, drivers.length)} of {drivers.length} drivers
+                    Showing {driversStartIndex + 1} to {Math.min(driversEndIndex, drivers.length)} of {drivers.length} applications
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
@@ -786,7 +954,6 @@ export default function AdminDashboard() {
                     >
                       <ChevronLeft className="w-5 h-5" />
                     </button>
-                    
                     {Array.from({ length: driversTotalPages }, (_, i) => i + 1).map((page) => (
                       <button
                         key={page}
@@ -800,7 +967,6 @@ export default function AdminDashboard() {
                         {page}
                       </button>
                     ))}
-                    
                     <button
                       onClick={() => goToDriversPage(driversPage + 1)}
                       disabled={driversPage === driversTotalPages}
@@ -811,6 +977,95 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Feedback Tab */}
+        {activeTab === 'feedback' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+              <div className="p-6 border-b border-gray-100 dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Customer Feedback Management</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Toggle public visibility for each rating/review. New feedback stays hidden by default.
+                </p>
+              </div>
+              {feedbackError && (
+                <div className="mx-6 mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {feedbackError}
+                </div>
+              )}
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Customer</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Booking</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Rating</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Comment</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Public</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {feedbackLoading ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                          Loading feedback...
+                        </td>
+                      </tr>
+                    ) : feedbackItems.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                          No feedback available.
+                        </td>
+                      </tr>
+                    ) : (
+                      feedbackItems.map((item) => (
+                        <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                            {item.customer_name || item.customer_identifier || 'Customer'}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                            {item.booking_id || '-'}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                            {Number.isFinite(item.rating) ? `${item.rating}/5` : '-'}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-md">
+                            {item.comment || '-'}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                            {formatDate(item.created_at)}
+                          </td>
+                          <td className="px-6 py-4 text-sm">
+                            <button
+                              onClick={() => handleFeedbackVisibilityToggle(item.id, Boolean(item.is_public))}
+                              disabled={togglingFeedbackId === item.id}
+                              className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                item.is_public
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                  : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                              } disabled:opacity-60`}
+                            >
+                              {togglingFeedbackId === item.id
+                                ? 'Updating...'
+                                : item.is_public
+                                ? 'ON'
+                                : 'OFF'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </motion.div>
         )}
@@ -856,6 +1111,17 @@ export default function AdminDashboard() {
             transition={{ duration: 0.5 }}
           >
             <OffersManager />
+          </motion.div>
+        )}
+
+        {/* Blogs Tab */}
+        {activeTab === 'blogs' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <BlogManager />
           </motion.div>
         )}
 
@@ -1054,7 +1320,7 @@ export default function AdminDashboard() {
                   <p className="text-gray-900 dark:text-white">{selectedDriver.vehicle_plate || '-'}</p>
                 </div>
               </div>
-              {!selectedDriver.is_approved && (
+              {!isDriverApproved(selectedDriver) && (
                 <div className="flex space-x-3 mt-6">
                   <button
                     onClick={() => {

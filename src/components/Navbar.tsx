@@ -63,11 +63,12 @@ export default function Navbar() {
   const navItems = [
     { name: 'Home', href: '/' },
     { name: 'Book Now', href: '/book' },
+    { name: 'Blogs', href: '/blogs' },
     { name: 'About Us', href: '/about' },
     { name: 'Picture Gallery', href: '/gallery' },
     ...(showDriverDashboard
       ? [{ name: 'Driver Dashboard', href: '/driver-dashboard' }]
-      : [{ name: 'Join Our Driving Team', href: '/driver-application' }]),
+      : [{ name: 'Drive With Us', href: '/driver-application' }]),
     ...(user?.isAdmin ? [{ name: 'Admin', href: '/admin' }] : []),
   ];
 
@@ -97,17 +98,16 @@ export default function Navbar() {
 
             {/* Desktop Navigation */}
             <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-2">
-                {navItems.map((item, index) => (
-                  <div key={item.name}>
-                    <Link
-                      href={item.href}
-                      className="text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300 relative group hover:bg-gray-100 dark:hover:bg-gray-800"
-                    >
-                      {item.name}
-                      <span className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-red-500 to-red-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 rounded-full"></span>
-                    </Link>
-                  </div>
+              <div className="ml-10 flex items-baseline space-x-1">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className="text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-300 relative group hover:bg-gray-100 dark:hover:bg-gray-800 whitespace-nowrap"
+                  >
+                    {item.name}
+                    <span className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-red-500 to-red-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 rounded-full"></span>
+                  </Link>
                 ))}
               </div>
             </div>
